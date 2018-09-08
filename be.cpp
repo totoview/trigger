@@ -63,7 +63,7 @@ UPtr<BE> parseBE(const Json& spec, std::map<String, UPtr<Predicate>>& predicates
 {
 	Vector<UPtr<BE>> root;
 	parse(root, spec, predicates);
-	if (root.size() != 1) {
+	if (root.empty()) {
 		throw "Invalid trigger (empty spec)";
 	}
 	return std::move(root[0]);

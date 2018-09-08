@@ -14,34 +14,17 @@ namespace {
 	};
 
 	Input parseInput(const std::string& name, Json& spec) {
-		if (!spec.is_object() || spec.find("type") == spec.end() || spec.find("name") == spec.end()) {
-			throw "Invalid 'input' for " + name;
-		}
-		return Input{spec["type"], spec["name"]};
+		return Input{util::findString(spec, "type"), util::findString(spec, "name")};
 	}
 
 	Pattern parsePattern(const std::string& name, Json& spec) {
-		if (!spec.is_object() || spec.find("pattern") == spec.end()) {
-			throw "Invalid 'pattern' for " + name;
+		Pattern p{util::findString(spec, "pattern").get<std::string>(), true};
+
+		try {
+			p.caseSensitive = util::findBool(spec, "caseSensitive").get<bool>();
+		} catch (...) {
+			// nothing, optional field
 		}
-
-		auto pat = spec["pattern"];
-		if (!pat.is_string()) {
-			throw "Ivnalid pattern (string expected) for " + name;
-		}
-
-		Pattern p;
-		p.pattern = pat.get<std::string>();
-
-		p.caseSensitive = true;
-		if (spec.find("caseSensitive") != spec.end()) {
-			auto cs = spec["caseSensitive"];
-			if (!cs.is_boolean()) {
-				throw "Invalid caseSensitive (boolean expected) for " + name;
-			}
-			p.caseSensitive = cs.get<bool>();
-		}
-
 		return p;
 	}
 
@@ -78,12 +61,10 @@ void Engine::parseVariables(const Json& spec)
 {
 	for (const auto& e : util::findObj(spec, "vars").items()) {
 		auto& spec = e.value();
-		if (!spec.is_object() || spec.find("type") == spec.end()) {
-			throw "Invalid variable spec for " + e.key();
-		}
 		try {
-			variables.emplace(std::make_pair(e.key(), std::make_unique<Variable>(e.key(), Variable::Types.at(spec["type"]))));
-		} catch (const std::out_of_range& ex) {
+			auto type = util::findString(spec, "type");
+			variables.emplace(std::make_pair(e.key(), std::make_unique<Variable>(e.key(), Variable::Types.at(type.get<std::string>()))));
+		} catch (...) {
 			throw "Invalid variable spec for " + e.key();
 		}
 	}
@@ -95,17 +76,10 @@ void Engine::parsePredicates(const Json& spec)
 
 	for (const auto& e : util::findObj(spec, "predicates").items()) {
 		auto& spec = e.value();
-		if (!spec.is_object() || spec.find("type") == spec.end() || spec.find("input") == spec.end()) {
-			throw "Invalid predicate spec " + e.key();
-		}
 
 		try {
-			auto input = spec["input"];
-			if (!input.is_array() || input.size() != 2) {
-				throw "Invalid predicate input (not an array of length 2) for " + e.key();
-			}
-
-			auto type = Predicate::Types.at(spec["type"]);
+			auto input = util::findArray(spec, "input");
+			auto type = Predicate::Types.at(util::findString(spec, "type").get<std::string>());
 
 			switch (type) {
 				default:
@@ -158,7 +132,7 @@ void Engine::parsePredicates(const Json& spec)
 				}
 					break;
 			}
-		} catch (const std::out_of_range& ex) {
+		} catch (...) {
 			throw "Invalid predicate spec for " + e.key();
 		}
 	}
@@ -173,7 +147,7 @@ void Engine::parseTriggers(const Json& spec)
 		}
 		try {
 			triggers.emplace(std::make_pair(e.key(), std::make_unique<Trigger>(e.key(), spec, *predicates)));
-		} catch (const std::out_of_range& ex) {
+		} catch (...) {
 			throw "Invalid trigger spec for " + e.key();
 		}
 	}
