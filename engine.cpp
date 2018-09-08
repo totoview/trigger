@@ -1,5 +1,6 @@
 #include <iostream>
 #include "engine.h"
+#include "util.h"
 
 namespace {
 	struct Input {
@@ -11,19 +12,6 @@ namespace {
 	 	std::string pattern;
 		bool caseSensitive;
 	};
-
-	const Json& findObj(const Json& spec, const std::string&& name) {
-		const auto& p = spec.find(name);
-		if (p == spec.end()) {
-			throw "failed to find " + name;
-		}
-
-		const auto& v = p.value();
-		if (!v.is_object()) {
-			throw "Invalid " + name + "(object expected)";
-		}
-		return v;
-	}
 
 	Input parseInput(const std::string& name, Json& spec) {
 		if (!spec.is_object() || spec.find("type") == spec.end() || spec.find("name") == spec.end()) {
@@ -88,7 +76,7 @@ Engine::Engine(const std::string& s) {
 
 void Engine::parseVariables(const Json& spec)
 {
-	for (const auto& e : findObj(spec, "vars").items()) {
+	for (const auto& e : util::findObj(spec, "vars").items()) {
 		auto& spec = e.value();
 		if (!spec.is_object() || spec.find("type") == spec.end()) {
 			throw "Invalid variable spec for " + e.key();
@@ -105,7 +93,7 @@ void Engine::parsePredicates(const Json& spec)
 {
 	predicates = std::make_unique<PredMap>();
 
-	for (const auto& e : findObj(spec, "predicates").items()) {
+	for (const auto& e : util::findObj(spec, "predicates").items()) {
 		auto& spec = e.value();
 		if (!spec.is_object() || spec.find("type") == spec.end() || spec.find("input") == spec.end()) {
 			throw "Invalid predicate spec " + e.key();
@@ -178,7 +166,7 @@ void Engine::parsePredicates(const Json& spec)
 
 void Engine::parseTriggers(const Json& spec)
 {
-	for (const auto& e : findObj(spec, "triggers").items()) {
+	for (const auto& e : util::findObj(spec, "triggers").items()) {
 		auto& spec = e.value();
 		if (!spec.is_object()) {
 			throw "Invalid trigger spec (JSON object expected) for " + e.key();

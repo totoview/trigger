@@ -1,6 +1,7 @@
 #include <iostream>
 #include "be.h"
 #include "pred.h"
+#include "util.h"
 
 namespace {
 	const std::map<std::string, BE::Type> Types = {
@@ -18,13 +19,7 @@ namespace {
 			switch (Types.at(spec["type"])) {
 				case BE::Type::AND:
 				{
-					if (spec.find("and") == spec.end()) {
-						throw "Invalid trigger and ('and' not found)";
-					}
-					auto a = spec["and"];
-					if (!a.is_array()) {
-						throw "Invalid trigger and value (expecting array)";
-					}
+					auto a = util::findArray(spec, "and");
 					auto p = std::make_unique<And>();
 					for (auto& s : a) {
 						parse(p->ops, s, predicates);
@@ -35,13 +30,7 @@ namespace {
 
 				case BE::Type::OR:
 				{
-					if (spec.find("or") == spec.end()) {
-						throw "Invalid trigger or ('or' not found)";
-					}
-					auto o = spec["or"];
-					if (!o.is_array()) {
-						throw "Invalid trigger or value (expecting array)";
-					}
+					auto o = util::findArray(spec, "or");
 					auto p = std::make_unique<Or>();
 					for (auto& s : o) {
 						parse(p->ops, s, predicates);
@@ -52,14 +41,7 @@ namespace {
 
 				case BE::Type::PRED:
 				{
-					if (spec.find("predicate") == spec.end()) {
-						throw "Invalid trigger predicate ('predicate' not found)";
-					}
-					auto p = spec["predicate"];
-					if (!p.is_string()) {
-						throw "Invalid trigger predicate value (expecting string)";
-					}
-
+					auto p = util::findString(spec, "predicate");
 					auto predname = p.get<std::string>();
 					if (predicates.find(predname) == predicates.end()) {
 						throw "Invalid trigger predicate value (no predicate named '" + predname + "')";
@@ -71,6 +53,8 @@ namespace {
 			}
 		} catch (std::out_of_range& ex) {
 			throw "Invalid trigger spec: " + std::string{ex.what()};
+		} catch (std::string& err) {
+			throw "Invalid trigger spec: " + err;
 		}
 	}
 }
