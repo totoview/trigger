@@ -1,0 +1,65 @@
+{
+	"vars": {
+		"name": {
+			"type": "string"
+		},
+		"age": {
+			"type": "int"
+		},
+		"single": {
+			"type": "bool"
+		}
+	},
+
+	"predicates": {
+		"isValidName": {
+			"type": "stringMatch",
+			"input": [
+				{
+					"type": "var",
+					"name": "name"
+				},
+				{
+					"pattern": "",
+					"caseSensitive": true
+				}
+			]
+		},
+		"isUnderage": {
+			"type": "intLT",
+			"input": [
+				{
+					"type": "var",
+					"name": "age"
+				},
+				16
+			]
+		},
+		"isSingle": {
+			"type": "boolEQ",
+			"input": [
+				{
+					"type": "var",
+					"name": "single"
+				},
+				true
+			]
+		}
+	},
+
+	"triggers": {
+		"VIP": {
+			"type": "and",
+			"and": [
+				{
+					"type": "predicate",
+					"predicate": "isValidName"
+				},
+				{
+					"type": "predicate",
+					"predicate": "isUnderage"
+				}
+			]
+		}
+	}
+}
