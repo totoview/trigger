@@ -20,8 +20,7 @@
 					"name": "name"
 				},
 				{
-					"pattern": "",
-					"caseSensitive": true
+					"pattern": "abc"
 				}
 			]
 		},
@@ -33,6 +32,16 @@
 					"name": "age"
 				},
 				16
+			]
+		},
+		"isMarried": {
+			"type": "boolEQ",
+			"input": [
+				{
+					"type": "var",
+					"name": "single"
+				},
+				false
 			]
 		},
 		"isSingle": {

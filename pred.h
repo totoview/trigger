@@ -20,31 +20,32 @@ public:
 public:
 	virtual bool eval() const = 0;
 	virtual ~Predicate() = default;
+
 	Type type() { return ptype; }
 
 	String name;
 	Vector<Trigger*> triggers;
 
 protected:
-	Predicate(Type t) : ptype(t) {}
+	Predicate(const std::string& n, Type t) : name(n), ptype(t) {}
 	Type ptype;				// predicate type
 };
 
 
 class PStringMatch : public Predicate {
 public:
-	PStringMatch(Variable* v, const String& p, bool cs);
+	PStringMatch(const std::string& name, Variable* var, const String& pat);
 	bool eval() const override;
+	const char* patternString() const { return pattern.c_str(); }
 
 private:
 	Variable* var;
 	String pattern;
-	bool caseSensitive;
 };
 
 class PIntLT : public Predicate {
 public:
-	PIntLT(Variable* v, int n);
+	PIntLT(const std::string& name, Variable* v, int n);
 	bool eval() const override;
 
 private:
@@ -54,7 +55,7 @@ private:
 
 class PBoolEQ : public Predicate {
 public:
-	PBoolEQ(Variable* v, bool f);
+	PBoolEQ(const std::string& name, Variable* v, bool f);
 	bool eval() const override;
 
 private:

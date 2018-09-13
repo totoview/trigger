@@ -38,7 +38,7 @@ public:
 struct VarValue {
 	VarValue(String n, bool v): name(n), value(v) {}
 	VarValue(String n, int v): name(n), value(v) {}
-	VarValue(String n, String v): name(n), value(v) {}
+	VarValue(String n, const String& v): name(n), value(v) {}
 
 	String name;
 	std::variant<bool, int, String> value;

@@ -23,7 +23,9 @@ int main(int argc, char* argv[]) {
 		}
 
 		Vector<VarValue> input{
-			VarValue{ "age", 5 }
+			VarValue{ "age", 5 },
+			VarValue{ "single", false },
+			VarValue{ "name", String{"Mike abc test"}},
 		};
 
 		for (auto t : engine.match(input)) {

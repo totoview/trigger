@@ -1,4 +1,5 @@
 #include <iostream>
+#include <set>
 #include "engine.h"
 #include "util.h"
 
@@ -10,7 +11,6 @@ namespace {
 
 	struct Pattern {
 	 	std::string pattern;
-		bool caseSensitive;
 	};
 
 	Input parseInput(const std::string& name, Json& spec) {
@@ -18,14 +18,7 @@ namespace {
 	}
 
 	Pattern parsePattern(const std::string& name, Json& spec) {
-		Pattern p{util::findString(spec, "pattern").get<std::string>(), true};
-
-		try {
-			p.caseSensitive = util::findBool(spec, "caseSensitive").get<bool>();
-		} catch (...) {
-			// nothing, optional field
-		}
-		return p;
+		return Pattern{util::findString(spec, "pattern").get<std::string>()};
 	}
 
 	bool parseBool(const std::string& name, Json& spec) {
@@ -46,7 +39,7 @@ namespace {
 Engine::Engine(const std::string& s) {
 	auto spec = Json::parse(s);
 
-	std::cout << spec.dump(4) << std::endl;
+	// std::cout << spec.dump(4) << std::endl;
 
 	if (!spec.is_object()) {
 		throw "Invalid input data, JSON object expected";
@@ -55,6 +48,13 @@ Engine::Engine(const std::string& s) {
 	parseVariables(spec);
 	parsePredicates(spec);
 	parseTriggers(spec);
+
+	// init matchers
+	for (auto& v : variables) {
+		if (v.second->matcher) {
+			v.second->matcher->init();
+		}
+	}
 }
 
 void Engine::parseVariables(const Json& spec)
@@ -93,7 +93,7 @@ void Engine::parsePredicates(const Json& spec)
 						throw "Invalid predicate (var '" + var.name + "' not found) for " + e.key();
 					} else {
 						auto& pv = variables[var.name];
-						predicates->emplace(std::make_pair(e.key(), std::make_unique<PBoolEQ>(pv.get(), val)));
+						predicates->emplace(std::make_pair(e.key(), std::make_unique<PBoolEQ>(e.key(), pv.get(), val)));
 						pv->predicates.push_back((*predicates)[e.key()].get());
 					}
 				}
@@ -107,7 +107,7 @@ void Engine::parsePredicates(const Json& spec)
 						throw "Invalid predicate (var '" + var.name + "' not found) for " + e.key();
 					} else {
 						auto& pv = variables[var.name];
-						predicates->emplace(std::make_pair(e.key(), std::make_unique<PIntLT>(pv.get(), val)));
+						predicates->emplace(std::make_pair(e.key(), std::make_unique<PIntLT>(e.key(), pv.get(), val)));
 						pv->predicates.push_back((*predicates)[e.key()].get());
 					}
 				}
@@ -126,7 +126,7 @@ void Engine::parsePredicates(const Json& spec)
 							pv->matcher = std::make_unique<Matcher>(pv.get());
 						}
 
-						predicates->emplace(std::make_pair(e.key(), std::make_unique<PStringMatch>(pv.get(), pat.pattern, pat.caseSensitive)));
+						predicates->emplace(std::make_pair(e.key(), std::make_unique<PStringMatch>(e.key(), pv.get(), pat.pattern)));
 						pv->matcher->add((*predicates)[e.key()].get());
 					}
 				}
@@ -161,15 +161,46 @@ bool Engine::init()
 
 Vector<String> Engine::match(Vector<VarValue>& input)
 {
+	std::set<Predicate*> preds{};
+	Vector<Matcher*> matchers{};
+
 	// collect relevant predicates and matchers
 	for (const auto& i : input) {
 		if (variables.find(i.name) == variables.end()) {
 			throw "Variable not found: " + i.name;
 		}
 		auto& v = variables[i.name];
+		switch (v->type) {
+			case Variable::Type::BOOL:
+				v->boolValue = std::get<bool>(i.value);
+				break;
+			case Variable::Type::INT:
+				v->intValue = std::get<int>(i.value);
+				break;
+			case Variable::Type::STRING:
+				v->stringValue = std::get<String>(i.value);
+				break;
+		}
+		std::copy(v->predicates.begin(), v->predicates.end(), std::inserter(preds, preds.end()));
+
+		if (v->matcher) {
+			matchers.push_back(v->matcher.get());
+		}
 	}
 
 	// evaluate predicates and matchers
+	Vector<Predicate*> trueps{};
+
+	for (auto& p : preds) {
+		std::cout << "= matched pred: name=" << p->name << " cid=" << p->cid << '\n';
+		if (p->eval()) {
+			trueps.push_back(p);
+		}
+	}
+	for (auto& m : matchers) {
+		std::cout << "= matched trigger: var=" << m->variable() << '\n';
+		m->match(trueps);
+	}
 
 	// evaluate triggers
 	Vector<String> matched{};

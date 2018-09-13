@@ -1,6 +1,6 @@
 CC = clang++
 CFLAGS = -std=c++17
-LDFLAGS = -lfolly
+LDFLAGS = -lfolly -lhs
 
 .PHONY: all
 .SUFFIXES: $(SUFFIXES) .cpp .o
