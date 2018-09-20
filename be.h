@@ -5,6 +5,13 @@
 #include "common.h"
 
 class Predicate;
+class Trigger;
+
+struct Path {
+	void set(const std::vector<uint8_t>& p);
+	size_t n;
+	std::array<uint8_t, 16> p;
+};
 
 struct BE {
 	enum struct Type {
@@ -30,10 +37,13 @@ struct Or : BE {
 };
 
 struct Pred : BE {
-	Pred(Predicate* p) : BE(Type::PRED), pred(p) {}
+	Pred(Predicate* p, Trigger* t);
 	Predicate* pred;
+	Path path;
+	Trigger* trigger;
 };
 
-UPtr<BE> parseBE(const Json& spec, std::map<String, UPtr<Predicate>>& predicates);
+UPtr<BE> parseBE(const Json& spec, std::map<String, UPtr<Predicate>>& predicates, Trigger* trigger);
+void printBE(const UPtr<BE>& be);
 
 #endif

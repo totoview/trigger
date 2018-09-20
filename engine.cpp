@@ -153,12 +153,6 @@ void Engine::parseTriggers(const Json& spec)
 	}
 }
 
-bool Engine::init()
-{
-	// fixme: normalize BE trees
-	return true;
-}
-
 Vector<String> Engine::match(Vector<VarValue>& input)
 {
 	std::set<Predicate*> preds{};
@@ -200,6 +194,10 @@ Vector<String> Engine::match(Vector<VarValue>& input)
 	for (auto& m : matchers) {
 		std::cout << "= matched trigger: var=" << m->variable() << '\n';
 		m->match(trueps);
+	}
+
+	for (const auto& p : trueps) {
+		std::cout << "= true: name=" << p->name << " cid=" << p->cid << '\n';
 	}
 
 	// evaluate triggers

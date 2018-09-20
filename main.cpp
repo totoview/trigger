@@ -18,9 +18,6 @@ int main(int argc, char* argv[]) {
 		ss << ifs.rdbuf();
 
 		Engine engine{ss.str()};
-		if (!engine.init()) {
-			return EXIT_FAILURE;
-		}
 
 		Vector<VarValue> input{
 			VarValue{ "age", 5 },

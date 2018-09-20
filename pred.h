@@ -6,7 +6,7 @@
 #include "comparable.h"
 
 class Variable;
-class Trigger;
+class Pred;
 
 class Predicate : public Comparable {
 public:
@@ -24,7 +24,7 @@ public:
 	Type type() { return ptype; }
 
 	String name;
-	Vector<Trigger*> triggers;
+	Vector<Pred*> preds;
 
 protected:
 	Predicate(const std::string& n, Type t) : name(n), ptype(t) {}

@@ -2,8 +2,6 @@
 #define __ENGINE_H__
 
 #include <map>
-#include "common.h"
-
 #include "var.h"
 #include "pred.h"
 #include "trigger.h"
@@ -13,7 +11,6 @@ using PredMap = std::map<String, UPtr<Predicate>>;
 class Engine {
 public:
 	explicit Engine(const std::string& jsonSpec);
-	bool init();
 
 	Vector<String> match(Vector<VarValue>& input);
 

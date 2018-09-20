@@ -58,15 +58,20 @@
 
 	"triggers": {
 		"VIP": {
-			"type": "and",
-			"and": [
+			"type": "or",
+			"or": [
 				{
-					"type": "predicate",
-					"predicate": "isValidName"
-				},
-				{
-					"type": "predicate",
-					"predicate": "isUnderage"
+					"type": "and",
+					"and": [
+						{
+							"type": "predicate",
+							"predicate": "isValidName"
+						},
+						{
+							"type": "predicate",
+							"predicate": "isUnderage"
+						}
+					]
 				}
 			]
 		}

@@ -13,6 +13,7 @@ static int handler(unsigned int id, unsigned long long from, unsigned long long 
 void Matcher::onMatched(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags)
 {
 	matchCnt++;
+	results->push_back(predicates[id]);
 	std::cout << "#### match for pattern " << id << " at offset " << to << '\n';
 }
 
