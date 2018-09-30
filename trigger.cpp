@@ -37,7 +37,7 @@ void Trigger::addMatched(Pred* p)
 	parent->next = p;
 }
 
-bool Trigger::evalAnd(Path sub) const
+bool Trigger::evalOr(Path sub) const
 {
 	if (current->path.eq(sub)) // at a leaf
 		return true;
@@ -53,7 +53,7 @@ bool Trigger::evalAnd(Path sub) const
 	return result;
 }
 
-bool Trigger::evalOr(Path sub) const
+bool Trigger::evalAnd(Path sub) const
 {
 	if (current->path.eq(sub)) // at a leaf
 		return true;
