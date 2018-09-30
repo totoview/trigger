@@ -3,6 +3,7 @@
 
 #include <atomic>
 
+template <typename T>
 struct Comparable {
 	auto operator==(const Comparable& rhs) const {
 		return cid == rhs.cid;
@@ -16,5 +17,8 @@ struct Comparable {
 private:
 	static std::atomic_uint64_t cid_seed;
 };
+
+template <typename T>
+std::atomic_uint64_t Comparable<T>::cid_seed{0};
 
 #endif

@@ -22,17 +22,19 @@ namespace {
 	}
 
 	bool parseBool(const std::string& name, Json& spec) {
-		if (!spec.is_boolean()) {
-			throw "Invalid boolean value for " + name;
-		}
-		return spec.get<bool>();
+		if (util::findString(spec, "type").get<std::string>() != "bool")
+			throw "Invalid boolean value type for " + name;
+		return util::findBool(spec, "value").get<bool>();
 	}
 
 	int parseInt(const std::string& name, Json& spec) {
-		if (!spec.is_number_integer()) {
-			throw "Invalid integer value for " + name;
+		if (util::findString(spec, "type").get<std::string>() != "int")
+			throw "Invalid int value type for " + name;
+		try {
+			return util::findUInt(spec, "value").get<int>();
+		} catch (...) {
+			return util::findInt(spec, "value").get<int>();
 		}
-		return spec.get<int>();
 	}
 }
 
@@ -132,6 +134,8 @@ void Engine::parsePredicates(const Json& spec)
 				}
 					break;
 			}
+		} catch (std::string& err) {
+			throw "Invalid predicate spec for " + e.key() + ": " + err;
 		} catch (...) {
 			throw "Invalid predicate spec for " + e.key();
 		}
@@ -201,6 +205,30 @@ Vector<String> Engine::match(Vector<VarValue>& input)
 	}
 
 	// evaluate triggers
+	std::map<uint64_t, Trigger*> ts; // group matched preds by trigger
+	for (const auto& p : trueps) {
+		for (const auto& p2 : p->preds) {
+			auto& t = p2->trigger;
+			if (ts.find(t->cid) == ts.end()) {
+				t->clearMatched();
+				ts[t->cid] = t;
+			}
+			t->addMatched(p2);
+		}
+	}
+
+	std::cout << "===== group by triggers ======\n";
+	for (const auto& e : ts) {
+		std::cout << "id=" << e.first << ", name=" << e.second->name << '\n';
+		for (auto p = e.second->matched->next; p; p = p->next) {
+			std::cout << "    ==> " << p->pred->name << '\n';
+		}
+	}
+
 	Vector<String> matched{};
+	for (const auto& e : ts) {
+
+	}
+
 	return matched;
 }

@@ -31,7 +31,10 @@
 					"type": "var",
 					"name": "age"
 				},
-				16
+				{
+					"type": "int",
+					"value": 16
+				}
 			]
 		},
 		"isMarried": {
@@ -41,7 +44,10 @@
 					"type": "var",
 					"name": "single"
 				},
-				false
+				{
+					"type": "bool",
+					"value": false
+				}
 			]
 		},
 		"isSingle": {
@@ -51,7 +57,10 @@
 					"type": "var",
 					"name": "single"
 				},
-				true
+				{
+					"type": "bool",
+					"value": true
+				}
 			]
 		}
 	},

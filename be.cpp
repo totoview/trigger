@@ -78,16 +78,37 @@ namespace {
 		}
 	}
 
+	void assignPredIndex(UPtr<BE>& root, int& cur)
+	{
+		Vector<UPtr<BE>>* ops;
+
+		if (root->type == BE::Type::AND)
+			ops = &(static_cast<And*>(root.get())->ops);
+		else
+			ops = &(static_cast<Or*>(root.get())->ops);
+
+		auto max = ops->size();
+
+		for (auto i = 0; i < max; i++) {
+
+			UPtr<BE>& be = (*ops)[i];
+
+			if (be->type == BE::Type::PRED)
+				static_cast<Pred*>(be.get())->index = cur++;
+			else
+				assignPredIndex(be, cur);
+		}
+	}
+
 	// normalize BE for evaluation
 	void normalize(UPtr<BE>& root, std::vector<uint8_t> path)
 	{
 		Vector<UPtr<BE>>* ops;
 
-		if (root->type == BE::Type::AND) {
+		if (root->type == BE::Type::AND)
 			ops = &(static_cast<And*>(root.get())->ops);
-		} else {
+		else
 			ops = &(static_cast<Or*>(root.get())->ops);
-		}
 
 		auto max = ops->size();
 		if (max > 127)
@@ -132,7 +153,7 @@ namespace {
 			UPtr<BE>& be = (*ops)[i];
 			if (be->type == BE::Type::PRED) {
 				Pred* p = static_cast<Pred*>(be.get());
-				printf("%*s%d.PRED %s ( ", n+2, "", i, p->pred->name.c_str());
+				printf("%*s%d.PRED %s index=%d ( ", n+2, "", i, p->pred->name.c_str(), p->index);
 				for (auto j = 0; j < p->path.n; j++) {
 					if (p->path.p[j] & 128) {
 						printf("%d* ", p->path.p[j] & 127);
@@ -163,7 +184,8 @@ void Path::set(const std::vector<uint8_t>& data)
 Pred::Pred(Predicate* p, Trigger* t)
 : BE(Type::PRED), pred(p), trigger(t)
 {
-	p->preds.push_back(this);
+	if (p)
+		p->preds.push_back(this);
 }
 
 UPtr<BE> parseBE(const Json& spec, std::map<String, UPtr<Predicate>>& predicates, Trigger* trigger)
@@ -179,6 +201,9 @@ UPtr<BE> parseBE(const Json& spec, std::map<String, UPtr<Predicate>>& predicates
 
 	std::vector<uint8_t> path{};
 	normalize(v[0], path);
+
+	int index = 0;
+	assignPredIndex(v[0], index);
 
 	return std::move(v[0]);
 }

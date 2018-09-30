@@ -5,7 +5,9 @@
 #include "comparable.h"
 #include "be.h"
 
-class Trigger : public Comparable {
+struct Pred;
+
+class Trigger : public Comparable<Trigger> {
 public:
 	Trigger(const std::string& name,
 		const Json& spec,
@@ -13,6 +15,11 @@ public:
 
 	String name;
 	UPtr<BE> be;
+
+	void clearMatched();
+	void addMatched(Pred* p);
+
+	UPtr<Pred> matched; // list of matched predicates, sorted
 };
 
 #endif

@@ -9,7 +9,7 @@
 
 class Predicate;
 
-class Variable : public Comparable {
+class Variable : public Comparable<Variable> {
 public:
 	enum struct Type {
 		INT,

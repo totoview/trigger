@@ -5,7 +5,7 @@ LDFLAGS = -lfolly -lhs
 .PHONY: all
 .SUFFIXES: $(SUFFIXES) .cpp .o
 
-srcs = main.cpp engine.cpp matcher.cpp trigger.cpp pred.cpp var.cpp be.cpp comparable.cpp util.cpp
+srcs = main.cpp engine.cpp matcher.cpp trigger.cpp pred.cpp var.cpp be.cpp util.cpp
 objs = $(srcs:.cpp=.o)
 
 .cpp.o:

@@ -44,7 +44,7 @@ void Matcher::init()
 
 	for (int i = 0; i < cnt; i++) {
 		patterns[i] = static_cast<PStringMatch*>(predicates[i])->patternString();
-		std::cout << "[compile pattern] " << i << "/" << cnt << ": " << patterns[i] << '\n';
+		std::cout << "[compile pattern] " << i+1 << "/" << cnt << ": " << patterns[i] << '\n';
 		flags[i] = HS_FLAG_DOTALL;
 		ids[i] = i;
 	}

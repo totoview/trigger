@@ -8,7 +8,7 @@
 class Variable;
 class Pred;
 
-class Predicate : public Comparable {
+class Predicate : public Comparable<Predicate> {
 public:
 	enum struct Type {
 		STRING_MATCH,

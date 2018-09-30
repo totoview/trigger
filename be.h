@@ -38,9 +38,15 @@ struct Or : BE {
 
 struct Pred : BE {
 	Pred(Predicate* p, Trigger* t);
+
 	Predicate* pred;
-	Path path;
 	Trigger* trigger;
+	Path path;
+
+	// used by Trigger for evaluation
+	int index{-1}; // index of sorted predicates
+	Pred* prev{nullptr};
+	Pred* next{nullptr};
 };
 
 UPtr<BE> parseBE(const Json& spec, std::map<String, UPtr<Predicate>>& predicates, Trigger* trigger);
