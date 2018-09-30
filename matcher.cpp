@@ -14,7 +14,9 @@ void Matcher::onMatched(unsigned int id, unsigned long long from, unsigned long 
 {
 	matchCnt++;
 	results->push_back(predicates[id]);
+#ifdef __DEBUG__
 	std::cout << "#### match for pattern " << id << " at offset " << to << '\n';
+#endif
 }
 
 Matcher::~Matcher()
@@ -44,7 +46,9 @@ void Matcher::init()
 
 	for (int i = 0; i < cnt; i++) {
 		patterns[i] = static_cast<PStringMatch*>(predicates[i])->patternString();
+#ifdef __DEBUG__
 		std::cout << "[compile pattern] " << i+1 << "/" << cnt << ": " << patterns[i] << '\n';
+#endif
 		flags[i] = HS_FLAG_DOTALL;
 		ids[i] = i;
 	}
@@ -74,7 +78,9 @@ size_t Matcher::match(Vector<Predicate*>& c)
 	results = &c;
 	matchCnt = 0;
 
+#ifdef __DEBUG__
 	std::cout << "===== match: " << var->stringValue << '\n';
+#endif
 	if (hs_scan(db, input, strlen(input), 0, scratch, handler, this) != HS_SUCCESS) {
 		// std::cout << "failed to scan input buffer\n";
 	}

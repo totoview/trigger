@@ -3,18 +3,17 @@
 namespace
 {
 	const Json& find(const Json& spec, const std::string& name, nlohmann::json::value_t type) {
-		if (!spec.is_object()) {
+		if (!spec.is_object())
 			throw "Invalid spec (object expected)";
-		}
+
 		const auto& p = spec.find(name);
-		if (p == spec.end()) {
+		if (p == spec.end())
 			throw "Failed to find " + name;
-		}
 
 		const auto& v = p.value();
-		if (v.type() != type) {
+		if (v.type() != type)
 			throw "Invalid type for " + name;
-		}
+
 		return v;
 	}
 }

@@ -12,6 +12,8 @@ public:
 	Trigger(const std::string& name,
 		const Json& spec,
 		std::map<String, UPtr<Predicate>>& predicates);
+	void print() const;
+	bool check() const; // evaluation
 
 	String name;
 	UPtr<BE> be;
@@ -19,7 +21,13 @@ public:
 	void clearMatched();
 	void addMatched(Pred* p);
 
-	UPtr<Pred> matched; // list of matched predicates, sorted
+
+private:
+	bool evalAnd(Path p) const;
+	bool evalOr(Path p) const;
+
+	UPtr<Pred> matched;			// list of matched predicates, sorted
+	mutable Pred* current;		// the current predicate under evaluation
 };
 
 #endif

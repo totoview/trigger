@@ -4,7 +4,8 @@
 #include "pred.h"
 #include "util.h"
 
-namespace {
+namespace
+{
 	const std::map<std::string, BE::Type> Types = {
 		{ "and",       BE::Type::AND },
 		{ "or",        BE::Type::OR },
@@ -80,19 +81,7 @@ namespace {
 
 	void assignPredIndex(UPtr<BE>& root, int& cur)
 	{
-		Vector<UPtr<BE>>* ops;
-
-		if (root->type == BE::Type::AND)
-			ops = &(static_cast<And*>(root.get())->ops);
-		else
-			ops = &(static_cast<Or*>(root.get())->ops);
-
-		auto max = ops->size();
-
-		for (auto i = 0; i < max; i++) {
-
-			UPtr<BE>& be = (*ops)[i];
-
+		for (auto& be : *root->children()) {
 			if (be->type == BE::Type::PRED)
 				static_cast<Pred*>(be.get())->index = cur++;
 			else
@@ -103,25 +92,18 @@ namespace {
 	// normalize BE for evaluation
 	void normalize(UPtr<BE>& root, std::vector<uint8_t> path)
 	{
-		Vector<UPtr<BE>>* ops;
-
-		if (root->type == BE::Type::AND)
-			ops = &(static_cast<And*>(root.get())->ops);
-		else
-			ops = &(static_cast<Or*>(root.get())->ops);
+		Vector<UPtr<BE>>* ops = root->children();
 
 		auto max = ops->size();
-		if (max > 127)
+		if (max > MAX_INDEX)
 			throw "BE index overflow";
 
 		for (auto i = 0; i < max; i++) {
-
 			UPtr<BE>& be = (*ops)[i];
 
 			uint8_t n = static_cast<uint8_t>(i);
-			if (i == max-1 && root->type == BE::Type::AND) {
-				n |= uint8_t(128);
-			}
+			if (i == max-1 && root->type == BE::Type::AND)
+				n = MARK(n);
 
 			auto newpath = path;
 			newpath.push_back(n);
@@ -138,37 +120,56 @@ namespace {
 	void print(const UPtr<BE>& be, int index, int indent)
 	{
 		auto n = indent * 2;
+		Vector<UPtr<BE>>* ops = be->children();
 
-		Vector<UPtr<BE>>* ops;
+		printf("%*s%d.%s [\n", n, "", index, be->type == BE::Type::AND ? "AND" : "OR");
 
-		if (be->type == BE::Type::AND) {
-			ops = &(static_cast<And*>(be.get())->ops);
-			printf("%*s%d.AND [\n", n, "", index);
-		} else {
-			ops = &(static_cast<Or*>(be.get())->ops);
-			printf("%*s%d.OR [\n", n, "", index);
-		}
-
-		for (auto i = 0; i < ops->size(); i++) {
+		for (size_t max = ops->size(), i = 0; i < max; i++) {
 			UPtr<BE>& be = (*ops)[i];
+
 			if (be->type == BE::Type::PRED) {
 				Pred* p = static_cast<Pred*>(be.get());
-				printf("%*s%d.PRED %s index=%d ( ", n+2, "", i, p->pred->name.c_str(), p->index);
+				printf("%*s%zu.PRED %s index=%d ( ", n+2, "", i, p->pred->name.c_str(), p->index);
 				for (auto j = 0; j < p->path.n; j++) {
-					if (p->path.p[j] & 128) {
-						printf("%d* ", p->path.p[j] & 127);
-					} else {
+					if (IS_MARKED(p->path.p[j]))
+						printf("%d* ", CLR_MARK(p->path.p[j]));
+					else
 						printf("%d ", p->path.p[j]);
-					}
 				}
 				printf(")\n");
-			} else {
+			} else
 				print(be, i, indent+1);
-			}
 		}
 
 		printf("%*s]\n", n, "");
 	}
+}
+
+///////////////////////////////////////////////////////
+// Path
+
+bool Path::eq(const Path& rhs) const
+{
+	if (n == rhs.n) {
+		for (auto i = 0; i < n; i++) {
+			if (p[i] != rhs.p[i])
+				return false;
+		}
+		return true;
+	}
+	return false;
+}
+
+bool Path::startsWith(const Path& rhs) const
+{
+	if (n >= rhs.n) {
+		for (auto i = 0; i < rhs.n; i++) {
+			if (p[i] != rhs.p[i])
+				return false;
+		}
+		return true;
+	}
+	return false;
 }
 
 void Path::set(const std::vector<uint8_t>& data)
@@ -176,10 +177,12 @@ void Path::set(const std::vector<uint8_t>& data)
 	if (data.size() > p.max_size())
 		throw "Path length overflow";
 
-	n = data.size();
-	for (auto i = 0; i < n; i++)
+	for (size_t max = data.size(), i = 0; i < max; i++)
 		p[i] = data[i];
 }
+
+///////////////////////////////////////////////////////
+// Pred
 
 Pred::Pred(Predicate* p, Trigger* t)
 : BE(Type::PRED), pred(p), trigger(t)
@@ -192,9 +195,9 @@ UPtr<BE> parseBE(const Json& spec, std::map<String, UPtr<Predicate>>& predicates
 {
 	Vector<UPtr<BE>> v;
 	parse(v, spec, predicates, trigger);
-	if (v.empty()) {
+
+	if (v.empty())
 		throw "Invalid trigger (empty spec)";
-	}
 
 	// ensure the root is And
 	interleave(v[0], BE::Type::OR);
