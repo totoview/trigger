@@ -46,7 +46,7 @@ bool Trigger::evalOr(Path sub) const
 
 	while (current && current->path.startsWith(sub)) {
 		result = evalAnd(current->path.sub(sub.n+1)) || result;
-		current = current->next;
+		if (current) current = current->next;
 	}
 
 	if (current) current = current->prev;
@@ -67,7 +67,7 @@ bool Trigger::evalAnd(Path sub) const
 			result = false;
 		lastChild = child.isLastMarked();
 		result = evalOr(child) && result;
-		current = current->next;
+		if (current) current = current->next;
 	}
 
 	if (current) current = current->prev;
