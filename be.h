@@ -26,7 +26,7 @@ struct Path {
 	// check if the last node is marked
 	bool isLastMarked() const { return n && IS_MARKED(p[n-1]); }
 	// get a subpath of length len
-	Path sub(size_t len) const { return std::move(Path{len, p}); }
+	Path sub(size_t len) const { Path path; path.n = n; path.p = p; return std::move(path); }
 
 	size_t n{0};
 	std::array<uint8_t, 16> p;

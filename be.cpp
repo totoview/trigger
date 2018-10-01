@@ -177,7 +177,8 @@ void Path::set(const std::vector<uint8_t>& data)
 	if (data.size() > p.max_size())
 		throw "Path length overflow";
 
-	for (size_t max = data.size(), i = 0; i < max; i++)
+	n = data.size();
+	for (auto i = 0; i < n; i++)
 		p[i] = data[i];
 }
 

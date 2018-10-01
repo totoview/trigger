@@ -44,12 +44,12 @@ bool Trigger::evalOr(Path sub) const
 
 	auto result{false};
 
-	while (current->path.startsWith(sub)) {
-		result = result || evalAnd(current->path.sub(sub.n+1));
+	while (current && current->path.startsWith(sub)) {
+		result = evalAnd(current->path.sub(sub.n+1)) || result;
 		current = current->next;
 	}
 
-	current = current->prev;
+	if (current) current = current->prev;
 	return result;
 }
 
@@ -61,17 +61,16 @@ bool Trigger::evalAnd(Path sub) const
 	auto result{true}, lastChild{false};
 	uint8_t lastExplored{0};
 
-	while (current->path.startsWith(sub)) {
+	while (current && current->path.startsWith(sub)) {
 		auto child = current->path.sub(sub.n+1);
-		lastExplored++;
-		if (child.last() != lastExplored)
+		if (child.last() != lastExplored++)
 			result = false;
 		lastChild = child.isLastMarked();
-		result = result && evalOr(child);
+		result = evalOr(child) && result;
 		current = current->next;
 	}
 
-	current = current->prev;
+	if (current) current = current->prev;
 	return result && lastChild;
 }
 
