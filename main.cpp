@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
 		// parse input data
 		Vector<VarValue> input;
 
-		auto pattern {R"(^(\w+)\s*(.*)\s*$)"s};
+		auto pattern {R"(^([^\s]+)\s*(.*)\s*$)"s};
 		auto rx = std::regex{pattern};
 		size_t namelen{0};
 
@@ -58,6 +58,8 @@ int main(int argc, char* argv[]) {
 							input.push_back(VarValue{ name, String{value}});
 						}
 					}
+				} else {
+					printf("*** [WARN] ignore line: '%s'\n", line.c_str());
 				}
 			}
 		}
