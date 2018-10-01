@@ -90,17 +90,7 @@ int main(int argc, char* argv[]) {
 			std::cout << t << '\n';
 
 		printf("====================== BENCHMARK ========================\n");
-
-		auto cnt = 0;
-		auto start = std::chrono::high_resolution_clock::now();
-		int total = 1000000;
-		for (auto i = 0; i < total; i++) {
-			if (!engine.match(input).empty())
-				cnt++;
-		}
-		auto diff = std::chrono::high_resolution_clock::now() - start;
-		auto us = std::chrono::duration<double,std::micro>(diff).count();
-		std::cout << total << " matches completed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " matches/s)\n";
+		engine.bench_match(input, 1000000);
 
 	} catch (std::exception& ex) {
 		std::cerr << "Failed to parse input: " << ex.what() << '\n';

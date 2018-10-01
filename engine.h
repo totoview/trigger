@@ -13,6 +13,7 @@ public:
 	explicit Engine(const std::string& jsonSpec);
 
 	Vector<String> match(Vector<VarValue>& input, bool printMatchedPred = false);
+	void bench_match(Vector<VarValue>& input, int total);
 
 private:
 	void parseVariables(const Json& spec);
@@ -22,7 +23,7 @@ private:
 private:
 	std::map<String, UPtr<Variable>> variables;
 	UPtr<PredMap> predicates;
-	std::map<String, UPtr<Trigger>> triggers;
+	Vector<UPtr<Trigger>> triggers;
 };
 
 #endif

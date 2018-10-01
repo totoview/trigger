@@ -147,7 +147,7 @@ void Engine::parseTriggers(const Json& spec)
 			throw "Invalid trigger spec (JSON object expected) for " + e.key();
 
 		try {
-			triggers.emplace(std::make_pair(e.key(), std::make_unique<Trigger>(e.key(), spec, *predicates)));
+			triggers.push_back(std::make_unique<Trigger>(e.key(), spec, *predicates));
 		} catch (...) {
 			throw "Invalid trigger spec for " + e.key();
 		}
@@ -184,6 +184,7 @@ Vector<String> Engine::match(Vector<VarValue>& input, bool printMatchedPred)
 
 	// evaluate predicates and matchers
 	Vector<Predicate*> trueps{};
+	trueps.reserve(512);
 
 	for (auto& p : preds) {
 #ifdef __DEBUG__
@@ -207,28 +208,101 @@ Vector<String> Engine::match(Vector<VarValue>& input, bool printMatchedPred)
 	}
 
 	// evaluate triggers
-	std::map<uint64_t, Trigger*> ts; // group matched preds by trigger
+	for (auto& t : triggers)
+		t->clearMatched();
+
 	for (const auto& p : trueps) {
 		for (const auto& p2 : p->preds) {
 			auto& t = p2->trigger;
-			if (ts.find(t->cid) == ts.end()) {
-				t->clearMatched();
-				ts[t->cid] = t;
-			}
 			t->addMatched(p2);
 		}
 	}
+
 #ifdef __DEBUG__
 	std::cout << "===== group by triggers ======\n";
-	for (const auto& [i, t] : ts)
-		t->print();
+	for (const auto& t : triggers) {
+		if (t->hasMatched())
+			t->print();
+	}
 #endif
 
 	Vector<String> matched{};
-	for (const auto& [i, t] : ts) {
+	for (auto& t : triggers) {
 		if (t->check())
 			matched.push_back(t->name);
 	}
 
 	return matched;
+}
+
+
+void Engine::bench_match(Vector<VarValue>& input, int total)
+{
+	std::set<Predicate*> preds{};
+	Vector<Matcher*> matchers{};
+
+	// collect relevant predicates and matchers
+	for (const auto& i : input) {
+		if (variables.find(i.name) == variables.end())
+			throw "Variable not found: " + i.name;
+
+		auto& v = variables[i.name];
+		switch (v->type) {
+			case Variable::Type::BOOL:
+				v->boolValue = std::get<bool>(i.value);
+				break;
+			case Variable::Type::INT:
+				v->intValue = std::get<int>(i.value);
+				break;
+			case Variable::Type::STRING:
+				v->stringValue = std::get<String>(i.value);
+				break;
+		}
+		std::copy(v->predicates.begin(), v->predicates.end(), std::inserter(preds, preds.end()));
+
+		if (v->matcher)
+			matchers.push_back(v->matcher.get());
+	}
+
+	auto cnt = 0;
+	auto start = std::chrono::high_resolution_clock::now();
+
+	Vector<Predicate*> trueps{};
+	trueps.reserve(512);
+
+	for (auto i = 0; i < total; i++) {
+		// evaluate predicates and matchers
+		trueps.clear();
+
+		for (auto& p : preds) {
+			if (p->eval())
+				trueps.push_back(p);
+		}
+
+		for (auto& m : matchers) {
+			m->match(trueps);
+		}
+
+		// evaluate triggers
+		for (auto& t : triggers)
+			t->clearMatched();
+
+		for (const auto& p : trueps) {
+			for (const auto& p2 : p->preds) {
+				auto& t = p2->trigger;
+				t->addMatched(p2);
+			}
+		}
+
+		Vector<String> matched{};
+		for (auto& t : triggers) {
+			if (t->check())
+				matched.push_back(t->name);
+		}
+		if (!matched.empty()) cnt++;
+	}
+
+	auto diff = std::chrono::high_resolution_clock::now() - start;
+	auto us = std::chrono::duration<double,std::micro>(diff).count();
+	std::cout << total << " matches completed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " matches/s)\n";
 }

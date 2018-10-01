@@ -20,6 +20,7 @@ public:
 
 	void clearMatched();
 	void addMatched(Pred* p);
+	bool hasMatched() const { return matched->next != nullptr; }
 
 
 private:

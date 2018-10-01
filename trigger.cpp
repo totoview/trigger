@@ -76,6 +76,8 @@ bool Trigger::evalAnd(Path sub) const
 
 bool Trigger::check() const
 {
+	if (!matched->next) return false;
+
 	current = matched->next;
 	return evalAnd(Path{});
 }
