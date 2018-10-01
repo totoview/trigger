@@ -145,46 +145,6 @@ namespace
 	}
 }
 
-///////////////////////////////////////////////////////
-// Path
-
-bool Path::eq(const Path& rhs) const
-{
-	if (n == rhs.n) {
-		for (auto i = 0; i < n; i++) {
-			if (p[i] != rhs.p[i])
-				return false;
-		}
-		return true;
-	}
-	return false;
-}
-
-bool Path::startsWith(const Path& rhs) const
-{
-	if (n >= rhs.n) {
-		for (auto i = 0; i < rhs.n; i++) {
-			if (p[i] != rhs.p[i])
-				return false;
-		}
-		return true;
-	}
-	return false;
-}
-
-void Path::set(const std::vector<uint8_t>& data)
-{
-	if (data.size() > p.max_size())
-		throw "Path length overflow";
-
-	n = data.size();
-	for (auto i = 0; i < n; i++)
-		p[i] = data[i];
-}
-
-///////////////////////////////////////////////////////
-// Pred
-
 Pred::Pred(Predicate* p, Trigger* t)
 : BE(Type::PRED), pred(p), trigger(t)
 {

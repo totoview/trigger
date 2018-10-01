@@ -37,7 +37,7 @@ void Trigger::addMatched(Pred* p)
 	parent->next = p;
 }
 
-bool Trigger::evalOr(Path sub) const
+bool Trigger::evalOr(PathRef& sub)
 {
 	if (current->path.eq(sub)) // at a leaf
 		return true;
@@ -45,7 +45,8 @@ bool Trigger::evalOr(Path sub) const
 	auto result{false};
 
 	while (current && current->path.startsWith(sub)) {
-		result = evalAnd(current->path.sub(sub.n+1)) || result;
+		auto child = current->path.sub(sub.n+1);
+		result = evalAnd(child) || result;
 		if (current) current = current->next;
 	}
 
@@ -53,7 +54,7 @@ bool Trigger::evalOr(Path sub) const
 	return result;
 }
 
-bool Trigger::evalAnd(Path sub) const
+bool Trigger::evalAnd(PathRef& sub)
 {
 	if (current->path.eq(sub)) // at a leaf
 		return true;
@@ -74,9 +75,10 @@ bool Trigger::evalAnd(Path sub) const
 	return result && lastChild;
 }
 
-bool Trigger::check() const
+bool Trigger::check()
 {
 	if (!matched->next) return false;
 	current = matched->next;
-	return evalAnd(Path{});
+	auto startPath = PathRef{0, &current->path.p };
+	return evalAnd(startPath);
 }

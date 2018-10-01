@@ -171,7 +171,7 @@ const Vector<uint64_t>& Engine::match(Vector<VarValue>& input, bool printMatched
 	matchedPreds.clear();
 	matchedTriggers.clear();
 
-	std::set<Predicate*> preds{};
+	Vector<Predicate*> preds{};
 	Vector<Matcher*> matchers{};
 
 	// collect relevant predicates and matchers
@@ -249,7 +249,7 @@ const Vector<uint64_t>& Engine::match(Vector<VarValue>& input, bool printMatched
 
 void Engine::bench_match(Vector<VarValue>& input, int total)
 {
-	std::set<Predicate*> preds{};
+	Vector<Predicate*> preds{};
 	Vector<Matcher*> matchers{};
 
 	// collect relevant predicates and matchers

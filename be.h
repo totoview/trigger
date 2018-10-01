@@ -12,21 +12,51 @@ class Trigger;
 #define IS_MARKED(n) ((n) & 128)
 #define CLR_MARK(n)  ((n) & 127)
 
+struct PathRef {
+	uint8_t last() const { return CLR_MARK((*p)[n-1]); }
+	bool isLastMarked() const { return n && IS_MARKED((*p)[n-1]); }
+
+	size_t n;
+	std::array<uint8_t, 16>* p;
+};
+
 struct Path {
 	// set value from a vector
-	void set(const std::vector<uint8_t>& p);
+	void set(const std::vector<uint8_t>& data) {
+		if (data.size() > p.max_size())
+			throw "Path length overflow";
+
+		n = data.size();
+		for (auto i = 0; i < n; i++)
+			p[i] = data[i];
+	}
+
 	// append a new node
 	void append(uint8_t v) { p[n++] = v; }
-	// check equality
-	bool eq(const Path& rhs) const;
-	// check if rhs is a prefix
-	bool startsWith(const Path& rhs) const;
-	// get the last node (without mark bit)
-	uint8_t last() const { return CLR_MARK(p[n-1]); }
-	// check if the last node is marked
-	bool isLastMarked() const { return n && IS_MARKED(p[n-1]); }
-	// get a subpath of length len
-	Path sub(size_t len) const { Path path; path.n = len; path.p = p; return std::move(path); }
+
+	bool eq(const PathRef& ref) const {
+		if (ref.n == n) {
+			if (ref.p == &p) return true;
+			for (int i = n - 1; i >= 0; --i) {
+				if ((*ref.p)[i] != p[i])
+					return false;
+			}
+			return true;
+		}
+		return false;
+	}
+	bool startsWith(const PathRef& ref) const {
+		if (ref.n <= n) {
+			if (ref.p == &p) return true;
+			for (int i = ref.n - 1; i >= 0; --i) {
+				if ((*ref.p)[i] != p[i])
+					return false;
+			}
+			return true;
+		}
+		return false;
+	}
+	PathRef sub(size_t len) { return std::move(PathRef{len, &p}); }
 
 	size_t n{0};
 	std::array<uint8_t, 16> p;
