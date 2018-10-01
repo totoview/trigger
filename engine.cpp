@@ -19,7 +19,9 @@ namespace
 	}
 
 	Pattern parsePattern(const std::string& name, Json& spec) {
-		return Pattern{util::findString(spec, "pattern").get<std::string>()};
+		if (util::findString(spec, "type").get<std::string>() != "pattern")
+			throw "Invalid pattern value type for " + name;
+		return Pattern{util::findString(spec, "value").get<std::string>()};
 	}
 
 	bool parseBool(const std::string& name, Json& spec) {
