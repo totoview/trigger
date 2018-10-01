@@ -12,7 +12,7 @@ class Engine {
 public:
 	explicit Engine(const std::string& jsonSpec);
 
-	Vector<String> match(Vector<VarValue>& input);
+	Vector<String> match(Vector<VarValue>& input, bool printMatchedPred = false);
 
 private:
 	void parseVariables(const Json& spec);

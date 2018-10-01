@@ -1,3 +1,6 @@
+#include <algorithm>
+#include <cctype>
+#include <locale>
 #include "util.h"
 
 namespace
@@ -15,6 +18,18 @@ namespace
 			throw "Invalid type for " + name;
 
 		return v;
+	}
+
+	void ltrim(std::string &s) {
+		s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
+			return !std::isspace(ch);
+		}));
+	}
+
+	void rtrim(std::string &s) {
+		s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
+			return !std::isspace(ch);
+		}).base(), s.end());
 	}
 }
 
@@ -46,5 +61,10 @@ namespace util
 
 	const Json& findFloat(const Json& spec, const std::string&& name) {
 		return ::find(spec, name, nlohmann::detail::value_t::number_float);
+	}
+
+	void trim(std::string &s) {
+		ltrim(s);
+		rtrim(s);
 	}
 }

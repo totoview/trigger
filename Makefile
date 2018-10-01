@@ -1,4 +1,4 @@
-DEBUG = yes
+DEBUG = no
 
 ifeq ($(DEBUG),yes)
 	EXTRA = -D__DEBUG__

@@ -154,7 +154,7 @@ void Engine::parseTriggers(const Json& spec)
 	}
 }
 
-Vector<String> Engine::match(Vector<VarValue>& input)
+Vector<String> Engine::match(Vector<VarValue>& input, bool printMatchedPred)
 {
 	std::set<Predicate*> preds{};
 	Vector<Matcher*> matchers{};
@@ -187,22 +187,24 @@ Vector<String> Engine::match(Vector<VarValue>& input)
 
 	for (auto& p : preds) {
 #ifdef __DEBUG__
-		std::cout << "= matched pred: name=" << p->name << " cid=" << p->cid << '\n';
+		std::cout << "= check pred: name=" << p->name << " cid=" << p->cid << '\n';
 #endif
 		if (p->eval())
 			trueps.push_back(p);
 	}
+
 	for (auto& m : matchers) {
 #ifdef __DEBUG__
-		std::cout << "= matched trigger: var=" << m->variable() << '\n';
+		std::cout << "= check matcher: var=" << m->variable() << '\n';
 #endif
 		m->match(trueps);
 	}
 
-#ifdef __DEBUG
-	for (const auto& p : trueps)
-		std::cout << "= true: name=" << p->name << " cid=" << p->cid << '\n';
-#endif
+	if (printMatchedPred) {
+		printf("================= MATCHED PREDICATES ====================\n");
+		for (const auto& p : trueps)
+			printf("%s\n", p->name.c_str());
+	}
 
 	// evaluate triggers
 	std::map<uint64_t, Trigger*> ts; // group matched preds by trigger

@@ -13,6 +13,9 @@ namespace util
 	const Json& findInt(const Json& spec, const std::string&& name);
 	const Json& findUInt(const Json& spec, const std::string&& name);
 	const Json& findFloat(const Json& spec, const std::string&& name);
+
+	// trim from both ends (in place)
+	void trim(std::string &s);
 }
 
 #endif
