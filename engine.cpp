@@ -58,6 +58,9 @@ Engine::Engine(const std::string& s) {
 		if (v.second->matcher)
 			v.second->matcher->init();
 	}
+
+	matchedPreds.reserve(512);
+	matchedTriggers.reserve(512);
 }
 
 void Engine::parseVariables(const Json& spec)
@@ -154,8 +157,20 @@ void Engine::parseTriggers(const Json& spec)
 	}
 }
 
-Vector<String> Engine::match(Vector<VarValue>& input, bool printMatchedPred)
+std::map<uint64_t, String> Engine::getTriggerMap() const
 {
+	std::map<uint64_t, String> m;
+	for (const auto& t : triggers) {
+		m[t->cid] = t->name;
+	}
+	return std::move(m);
+}
+
+const Vector<uint64_t>& Engine::match(Vector<VarValue>& input, bool printMatchedPred)
+{
+	matchedPreds.clear();
+	matchedTriggers.clear();
+
 	std::set<Predicate*> preds{};
 	Vector<Matcher*> matchers{};
 
@@ -183,27 +198,25 @@ Vector<String> Engine::match(Vector<VarValue>& input, bool printMatchedPred)
 	}
 
 	// evaluate predicates and matchers
-	Vector<Predicate*> trueps{};
-	trueps.reserve(512);
 
 	for (auto& p : preds) {
 #ifdef __DEBUG__
 		std::cout << "= check pred: name=" << p->name << " cid=" << p->cid << '\n';
 #endif
 		if (p->eval())
-			trueps.push_back(p);
+			matchedPreds.push_back(p);
 	}
 
 	for (auto& m : matchers) {
 #ifdef __DEBUG__
 		std::cout << "= check matcher: var=" << m->variable() << '\n';
 #endif
-		m->match(trueps);
+		m->match(matchedPreds);
 	}
 
 	if (printMatchedPred) {
 		printf("================= MATCHED PREDICATES ====================\n");
-		for (const auto& p : trueps)
+		for (const auto& p : matchedPreds)
 			printf("%s\n", p->name.c_str());
 	}
 
@@ -211,10 +224,9 @@ Vector<String> Engine::match(Vector<VarValue>& input, bool printMatchedPred)
 	for (auto& t : triggers)
 		t->clearMatched();
 
-	for (const auto& p : trueps) {
+	for (const auto& p : matchedPreds) {
 		for (const auto& p2 : p->preds) {
-			auto& t = p2->trigger;
-			t->addMatched(p2);
+			p2->trigger->addMatched(p2);
 		}
 	}
 
@@ -226,13 +238,12 @@ Vector<String> Engine::match(Vector<VarValue>& input, bool printMatchedPred)
 	}
 #endif
 
-	Vector<String> matched{};
 	for (auto& t : triggers) {
 		if (t->check())
-			matched.push_back(t->name);
+			matchedTriggers.push_back(t->cid);
 	}
 
-	return matched;
+	return matchedTriggers;
 }
 
 
@@ -267,39 +278,34 @@ void Engine::bench_match(Vector<VarValue>& input, int total)
 	auto cnt = 0;
 	auto start = std::chrono::high_resolution_clock::now();
 
-	Vector<Predicate*> trueps{};
-	trueps.reserve(512);
-
 	for (auto i = 0; i < total; i++) {
 		// evaluate predicates and matchers
-		trueps.clear();
+		matchedPreds.clear();
 
 		for (auto& p : preds) {
 			if (p->eval())
-				trueps.push_back(p);
+				matchedPreds.push_back(p);
 		}
 
 		for (auto& m : matchers) {
-			m->match(trueps);
+			m->match(matchedPreds);
 		}
 
 		// evaluate triggers
 		for (auto& t : triggers)
 			t->clearMatched();
 
-		for (const auto& p : trueps) {
-			for (const auto& p2 : p->preds) {
-				auto& t = p2->trigger;
-				t->addMatched(p2);
-			}
+		for (const auto& p : matchedPreds) {
+			for (const auto& p2 : p->preds)
+				p2->trigger->addMatched(p2);
 		}
 
-		Vector<String> matched{};
+		matchedTriggers.clear();
 		for (auto& t : triggers) {
 			if (t->check())
-				matched.push_back(t->name);
+				matchedTriggers.push_back(t->cid);
 		}
-		if (!matched.empty()) cnt++;
+		if (!matchedTriggers.empty()) cnt++;
 	}
 
 	auto diff = std::chrono::high_resolution_clock::now() - start;

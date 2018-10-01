@@ -86,8 +86,9 @@ int main(int argc, char* argv[]) {
 		auto fired = engine.match(input, true);
 
 		printf("=================== FIRED TRIGGERS ======================\n");
+		auto triggerMap = engine.getTriggerMap();
 		for (auto t : fired)
-			std::cout << t << '\n';
+			printf("%s\n", triggerMap[t].c_str());
 
 		printf("====================== BENCHMARK ========================\n");
 		engine.bench_match(input, 1000000);
