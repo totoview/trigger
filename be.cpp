@@ -2,6 +2,7 @@
 #include <iostream>
 #include "be.h"
 #include "pred.h"
+#include "trigger.h"
 #include "util.h"
 
 namespace
@@ -12,8 +13,10 @@ namespace
 		{ "predicate", BE::Type::PRED },
 	};
 
-	void parse(Vector<UPtr<BE>>& ops, const Json& spec, std::map<String, UPtr<Predicate>>& predicates, Trigger* trigger)
+	// return total number of PRED parsed
+	int parse(Vector<UPtr<BE>>& ops, const Json& spec, std::map<String, UPtr<Predicate>>& predicates, Trigger* trigger)
 	{
+		int cnt;
 		if (spec.find("type") == spec.end())
 			throw "Invalid trigger spec (type not found)";
 
@@ -25,7 +28,7 @@ namespace
 					auto p = std::make_unique<And>();
 
 					for (auto& s : a)
-						parse(p->ops, s, predicates, trigger);
+						cnt += parse(p->ops, s, predicates, trigger);
 
 					ops.push_back(std::move(p));
 				}
@@ -37,7 +40,7 @@ namespace
 					auto p = std::make_unique<Or>();
 
 					for (auto& s : o)
-						parse(p->ops, s, predicates, trigger);
+						cnt += parse(p->ops, s, predicates, trigger);
 
 					ops.push_back(std::move(p));
 				}
@@ -52,9 +55,11 @@ namespace
 						throw "Invalid trigger predicate value (no predicate named '" + predname + "')";
 
 					ops.push_back(std::make_unique<Pred>(predicates[predname].get(), trigger));
+					cnt++;
 				}
 					break;
 			}
+			return cnt;
 		} catch (std::out_of_range& ex) {
 			throw "Invalid trigger spec: " + std::string{ex.what()};
 		} catch (std::string& err) {
@@ -62,57 +67,66 @@ namespace
 		}
 	}
 
-	// interleave And/Or
-	void interleave(UPtr<BE>& p, BE::Type parentType)
-	{
-		if (p->type == BE::Type::PRED || p->type != parentType)
-			return;
-
-		if (parentType == BE::Type::AND) {
-			Or* po = new Or();
-			po->ops.push_back(std::move(p));
-			p.reset(po);
-		} else {
-			And* pa = new And();
-			pa->ops.push_back(std::move(p));
-			p.reset(pa);
-		}
-	}
-
-	void assignPredIndex(UPtr<BE>& root, int& cur)
+	void assignPredIndex(UPtr<BE>& root, int& cur, Trigger* trigger)
 	{
 		for (auto& be : *root->children()) {
-			if (be->type == BE::Type::PRED)
-				static_cast<Pred*>(be.get())->index = cur++;
-			else
-				assignPredIndex(be, cur);
+			if (be->type == BE::Type::PRED) {
+				trigger->preds[cur] = static_cast<Pred*>(be.get());
+				trigger->preds[cur]->index = cur;
+				if (cur++ > MAX_LEAVES)
+					throw "Too many leaf nodes";
+			} else
+				assignPredIndex(be, cur, trigger);
 		}
 	}
 
-	// normalize BE for evaluation
-	void normalize(UPtr<BE>& root, std::vector<uint8_t> path)
+	void assignLeaves(UPtr<BE>& root)
 	{
-		Vector<UPtr<BE>>* ops = root->children();
+		for (auto& be : *root->children()) {
+			if (be->type != BE::Type::PRED)
+				assignLeaves(be);
+		}
+		root->leaves = 0;
+		for (auto& be : *root->children())
+			root->leaves += be->leaves;
+	}
 
-		auto max = ops->size();
-		if (max > MAX_INDEX)
-			throw "BE index overflow";
+	void assignInterval(UPtr<BE>& root, int leftLeaves, int start, int end)
+	{
+		if (root->type == BE::Type::PRED) {
+			static_cast<Pred*>(root.get())->setInterval(start, end);
+			return;
+		}
 
-		for (auto i = 0; i < max; i++) {
-			UPtr<BE>& be = (*ops)[i];
+		if (root->type == BE::Type::OR) {
+			int left = leftLeaves;
+			for (auto& be : *root->children()) {
+				assignInterval(be, left, start, end);
+				left += be->leaves;
+			}
+		} else {
 
-			uint8_t n = static_cast<uint8_t>(i);
-			if (i == max-1 && root->type == BE::Type::AND)
-				n = MARK(n);
+			auto& children = *root->children();
+			auto cnt = children.size();
 
-			auto newpath = path;
-			newpath.push_back(n);
-
-			if (be->type == BE::Type::PRED) {
-				static_cast<Pred*>(be.get())->path.set(newpath);
+			if (cnt == 1) {
+				assignInterval(children[0], leftLeaves, start, end);
 			} else {
-				interleave(be, root->type);
-				normalize(be, newpath);
+				// first node
+				int left = leftLeaves;
+				int cur = leftLeaves + children[0]->leaves;
+				assignInterval(children[0], left, start, cur++);
+				left += children[0]->leaves;
+
+				for (int i = 1; i < cnt-1; i++) {
+					int size = (children[i]->type == BE::Type::PRED ? 1 : children[i]->children()->size());
+					assignInterval(children[i], left, cur, cur+size-1);
+					left += children[i]->leaves;
+					cur += size;
+				}
+
+				// last node
+				assignInterval(children[cnt-1], left, cur, end);
 			}
 		}
 	}
@@ -122,21 +136,14 @@ namespace
 		auto n = indent * 2;
 		Vector<UPtr<BE>>* ops = be->children();
 
-		printf("%*s%d.%s [\n", n, "", index, be->type == BE::Type::AND ? "AND" : "OR");
+		printf("%*s%d.%s #leaves=%d [\n", n, "", index, be->type == BE::Type::AND ? "AND" : "OR", be->leaves);
 
 		for (size_t max = ops->size(), i = 0; i < max; i++) {
 			UPtr<BE>& be = (*ops)[i];
 
 			if (be->type == BE::Type::PRED) {
 				Pred* p = static_cast<Pred*>(be.get());
-				printf("%*s%zu.PRED %s index=%d ( ", n+2, "", i, p->pred->name.c_str(), p->index);
-				for (auto j = 0; j < p->path.n; j++) {
-					if (IS_MARKED(p->path.p[j]))
-						printf("%d* ", CLR_MARK(p->path.p[j]));
-					else
-						printf("%d ", p->path.p[j]);
-				}
-				printf(")\n");
+				printf("%*s%zu.PRED %s index=%d [%d, %d]\n", n+2, "", i, p->pred->name.c_str(), p->index, p->intvStart, p->intvEnd);
 			} else
 				print(be, i, indent+1);
 		}
@@ -148,6 +155,7 @@ namespace
 Pred::Pred(Predicate* p, Trigger* t)
 : BE(Type::PRED), pred(p), trigger(t)
 {
+	leaves = 1;
 	if (p)
 		p->preds.push_back(this);
 }
@@ -155,19 +163,18 @@ Pred::Pred(Predicate* p, Trigger* t)
 UPtr<BE> parseBE(const Json& spec, std::map<String, UPtr<Predicate>>& predicates, Trigger* trigger)
 {
 	Vector<UPtr<BE>> v;
-	parse(v, spec, predicates, trigger);
+	trigger->totalLeaves = parse(v, spec, predicates, trigger);
 
 	if (v.empty())
 		throw "Invalid trigger (empty spec)";
 
-	// ensure the root is And
-	interleave(v[0], BE::Type::OR);
-
-	std::vector<uint8_t> path{};
-	normalize(v[0], path);
+	if (v[0]->type == BE::Type::PRED)
+		throw "Root must be AND or OR";
 
 	int index = 0;
-	assignPredIndex(v[0], index);
+	assignPredIndex(v[0], index, trigger);
+	assignLeaves(v[0]);
+	assignInterval(v[0], 0, 1, MAX_INTERVAL);
 
 	return std::move(v[0]);
 }

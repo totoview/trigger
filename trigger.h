@@ -7,6 +7,8 @@
 
 struct Pred;
 
+extern uint64_t MATCHED[];
+
 class Trigger : public Comparable<Trigger> {
 public:
 	Trigger(const std::string& name,
@@ -17,18 +19,14 @@ public:
 
 	String name;
 	UPtr<BE> be;
+	int totalLeaves{0};
 
-	void clearMatched();
-	void addMatched(Pred* p);
-	bool hasMatched() const { return matched->next != nullptr; }
+	void clearMatched() { matched = 0; }
+	void addMatched(Pred* p) { matched |= MATCHED[p->index]; }
+	bool hasMatched() const { return matched != 0; }
 
-
-private:
-	bool evalAnd(PathRef& p);
-	bool evalOr(PathRef& p);
-
-	UPtr<Pred> matched;			// list of matched predicates, sorted
-	mutable Pred* current;		// the current predicate under evaluation
+	uint64_t matched{0};
+	std::array<Pred*, 64> preds;
 };
 
 #endif
