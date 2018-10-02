@@ -7,7 +7,7 @@
 class Predicate;
 class Trigger;
 
-#define MAX_LEAVES    sizeof(uint64_t)
+#define MAX_LEAVES    8 * sizeof(uint64_t)
 #define MAX_INTERVAL  128
 
 struct BE {

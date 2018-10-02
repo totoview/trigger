@@ -18,53 +18,47 @@ namespace
 	{
 		int cnt;
 		if (spec.find("type") == spec.end())
-			throw "Invalid trigger spec (type not found)";
+			throw std::runtime_error{"Invalid trigger spec (type not found)"};
 
-		try {
-			switch (Types.at(spec["type"])) {
-				case BE::Type::AND:
-				{
-					auto a = util::findArray(spec, "and");
-					auto p = std::make_unique<And>();
+		switch (Types.at(spec["type"])) {
+			case BE::Type::AND:
+			{
+				auto a = util::findArray(spec, "and");
+				auto p = std::make_unique<And>();
 
-					for (auto& s : a)
-						cnt += parse(p->ops, s, predicates, trigger);
+				for (auto& s : a)
+					cnt += parse(p->ops, s, predicates, trigger);
 
-					ops.push_back(std::move(p));
-				}
-					break;
-
-				case BE::Type::OR:
-				{
-					auto o = util::findArray(spec, "or");
-					auto p = std::make_unique<Or>();
-
-					for (auto& s : o)
-						cnt += parse(p->ops, s, predicates, trigger);
-
-					ops.push_back(std::move(p));
-				}
-					break;
-
-				case BE::Type::PRED:
-				{
-					auto p = util::findString(spec, "predicate");
-					auto predname = p.get<std::string>();
-
-					if (predicates.find(predname) == predicates.end())
-						throw "Invalid trigger predicate value (no predicate named '" + predname + "')";
-
-					ops.push_back(std::make_unique<Pred>(predicates[predname].get(), trigger));
-					cnt++;
-				}
-					break;
+				ops.push_back(std::move(p));
 			}
-			return cnt;
-		} catch (std::out_of_range& ex) {
-			throw "Invalid trigger spec: " + std::string{ex.what()};
-		} catch (std::string& err) {
-			throw "Invalid trigger spec: " + err;
+				break;
+
+			case BE::Type::OR:
+			{
+				auto o = util::findArray(spec, "or");
+				auto p = std::make_unique<Or>();
+
+				for (auto& s : o)
+					cnt += parse(p->ops, s, predicates, trigger);
+
+				ops.push_back(std::move(p));
+			}
+				break;
+
+			case BE::Type::PRED:
+			{
+				auto p = util::findString(spec, "predicate");
+				auto predname = p.get<std::string>();
+
+				if (predicates.find(predname) == predicates.end())
+					throw std::runtime_error{"Invalid trigger predicate value (no predicate named '" + predname + "')"};
+
+				ops.push_back(std::make_unique<Pred>(predicates[predname].get(), trigger));
+				cnt++;
+			}
+				break;
 		}
+		return cnt;
 	}
 
 	void assignPredIndex(UPtr<BE>& root, int& cur, Trigger* trigger)
@@ -74,7 +68,7 @@ namespace
 				trigger->preds[cur] = static_cast<Pred*>(be.get());
 				trigger->preds[cur]->index = cur;
 				if (cur++ > MAX_LEAVES)
-					throw "Too many leaf nodes";
+					throw std::runtime_error{"too many leaf nodes"};
 			} else
 				assignPredIndex(be, cur, trigger);
 		}
@@ -166,10 +160,10 @@ UPtr<BE> parseBE(const Json& spec, std::map<String, UPtr<Predicate>>& predicates
 	trigger->totalLeaves = parse(v, spec, predicates, trigger);
 
 	if (v.empty())
-		throw "Invalid trigger (empty spec)";
+		throw std::runtime_error{"Invalid trigger (empty spec)"};
 
 	if (v[0]->type == BE::Type::PRED)
-		throw "Root must be AND or OR";
+		throw std::runtime_error{"Root must be AND or OR"};
 
 	int index = 0;
 	assignPredIndex(v[0], index, trigger);

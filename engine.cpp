@@ -20,19 +20,19 @@ namespace
 
 	Pattern parsePattern(const std::string& name, Json& spec) {
 		if (util::findString(spec, "type").get<std::string>() != "pattern")
-			throw "Invalid pattern value type for " + name;
+			throw std::runtime_error{"Invalid pattern value type for " + name};
 		return Pattern{util::findString(spec, "value").get<std::string>()};
 	}
 
 	bool parseBool(const std::string& name, Json& spec) {
 		if (util::findString(spec, "type").get<std::string>() != "bool")
-			throw "Invalid boolean value type for " + name;
+			throw std::runtime_error{"Invalid boolean value type for " + name};
 		return util::findBool(spec, "value").get<bool>();
 	}
 
 	int parseInt(const std::string& name, Json& spec) {
 		if (util::findString(spec, "type").get<std::string>() != "int")
-			throw "Invalid int value type for " + name;
+			throw std::runtime_error{"Invalid int value type for " + name};
 		try {
 			return util::findUInt(spec, "value").get<int>();
 		} catch (...) {
@@ -47,7 +47,7 @@ Engine::Engine(const std::string& s) {
 	// std::cout << spec.dump(4) << std::endl;
 
 	if (!spec.is_object())
-		throw "Invalid input data, JSON object expected";
+		throw std::runtime_error{"Invalid input data, JSON object expected"};
 
 	parseVariables(spec);
 	parsePredicates(spec);
@@ -70,8 +70,8 @@ void Engine::parseVariables(const Json& spec)
 		try {
 			auto type = util::findString(spec, "type");
 			variables.emplace(std::make_pair(e.key(), std::make_unique<Variable>(e.key(), Variable::Types.at(type.get<std::string>()))));
-		} catch (...) {
-			throw "Invalid variable spec for " + e.key();
+		} catch (std::exception& err) {
+			throw std::runtime_error{"Invalid variable spec for " + e.key() + ": " + err.what()};
 		}
 	}
 }
@@ -89,14 +89,14 @@ void Engine::parsePredicates(const Json& spec)
 
 			switch (type) {
 				default:
-					throw "Invalid predicate type";
+					throw std::runtime_error{"Invalid predicate type"};
 				case Predicate::Type::BOOL_EQ:
 				{
 					auto var = parseInput(e.key(), input[0]);
 					auto val = parseBool(e.key(), input[1]);
 
 					if (variables.find(var.name) == variables.end())
-						throw "Invalid predicate (var '" + var.name + "' not found) for " + e.key();
+						throw std::runtime_error{"Invalid predicate (var '" + var.name + "' not found) for " + e.key()};
 
 					auto& pv = variables[var.name];
 					predicates->emplace(std::make_pair(e.key(), std::make_unique<PBoolEQ>(e.key(), pv.get(), val)));
@@ -109,7 +109,7 @@ void Engine::parsePredicates(const Json& spec)
 					auto val = parseInt(e.key(), input[1]);
 
 					if (variables.find(var.name) == variables.end())
-						throw "Invalid predicate (var '" + var.name + "' not found) for " + e.key();
+						throw std::runtime_error{"Invalid predicate (var '" + var.name + "' not found) for " + e.key()};
 
 					auto& pv = variables[var.name];
 					predicates->emplace(std::make_pair(e.key(), std::make_unique<PIntLT>(e.key(), pv.get(), val)));
@@ -122,7 +122,7 @@ void Engine::parsePredicates(const Json& spec)
 					auto pat = parsePattern(e.key(), input[1]);
 
 					if (variables.find(var.name) == variables.end())
-						throw "Invalid predicate (var '" + var.name + "' not found) for " + e.key();
+						throw std::runtime_error{"Invalid predicate (var '" + var.name + "' not found) for " + e.key()};
 
 					auto& pv = variables[var.name];
 
@@ -134,10 +134,8 @@ void Engine::parsePredicates(const Json& spec)
 				}
 					break;
 			}
-		} catch (std::string& err) {
-			throw "Invalid predicate spec for " + e.key() + ": " + err;
-		} catch (...) {
-			throw "Invalid predicate spec for " + e.key();
+		} catch (std::exception& err) {
+			throw std::runtime_error{"Invalid predicate spec for " + e.key() + ": " + err.what()};
 		}
 	}
 }
@@ -147,12 +145,12 @@ void Engine::parseTriggers(const Json& spec)
 	for (const auto& e : util::findObj(spec, "triggers").items()) {
 		auto& spec = e.value();
 		if (!spec.is_object())
-			throw "Invalid trigger spec (JSON object expected) for " + e.key();
+			throw std::runtime_error{"Invalid trigger spec (JSON object expected) for " + e.key()};
 
 		try {
 			triggers.push_back(std::make_unique<Trigger>(e.key(), spec, *predicates));
-		} catch (...) {
-			throw "Invalid trigger spec for " + e.key();
+		} catch (std::exception& err) {
+			throw std::runtime_error{"Invalid trigger spec for " + e.key() + ": " + err.what()};
 		}
 	}
 }
@@ -177,7 +175,7 @@ const Vector<uint64_t>& Engine::match(Vector<VarValue>& input, bool printMatched
 	// collect relevant predicates and matchers
 	for (const auto& i : input) {
 		if (variables.find(i.name) == variables.end())
-			throw "Variable not found: " + i.name;
+			throw std::runtime_error{"Variable not found: " + i.name.toStdString()};
 
 		auto& v = variables[i.name];
 		switch (v->type) {
@@ -230,6 +228,10 @@ const Vector<uint64_t>& Engine::match(Vector<VarValue>& input, bool printMatched
 		}
 	}
 
+	printf("====================== TRIGGERS ====================\n");
+	for (auto& t : triggers)
+		t->print();
+
 #ifdef __DEBUG__
 	std::cout << "===== group by triggers ======\n";
 	for (const auto& t : triggers) {
@@ -255,7 +257,7 @@ void Engine::bench_match(Vector<VarValue>& input, int total)
 	// collect relevant predicates and matchers
 	for (const auto& i : input) {
 		if (variables.find(i.name) == variables.end())
-			throw "Variable not found: " + i.name;
+			throw std::runtime_error{"Variable not found: " + i.name.toStdString()};
 
 		auto& v = variables[i.name];
 		switch (v->type) {
