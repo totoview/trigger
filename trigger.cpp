@@ -66,15 +66,14 @@ bool Trigger::check()
 {
 	if (matched == 0) return false;
 
-	int expected = 1;
+	uint64_t f = MATCHED[0];
 	uint64_t m = matched;
 	for (int i = 0; m && i < MAX_LEAVES; i++) {
-		if (matched & MATCHED[i]) {
-			if (preds[i]->intvStart != expected)
-				return false;
-			expected = preds[i]->intvEnd + 1;
+		if (m & MATCHED[i]) {
+			if (f & MATCHED[preds[i]->intvStart-1])
+				f |= MATCHED[preds[i]->intvEnd];
 			m &= MASK[i];
 		}
 	}
-	return expected == MAX_INTERVAL + 1;
+	return f & MATCHED[63];
 }

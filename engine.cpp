@@ -228,10 +228,6 @@ const Vector<uint64_t>& Engine::match(Vector<VarValue>& input, bool printMatched
 		}
 	}
 
-	printf("====================== TRIGGERS ====================\n");
-	for (auto& t : triggers)
-		t->print();
-
 #ifdef __DEBUG__
 	std::cout << "===== group by triggers ======\n";
 	for (const auto& t : triggers) {

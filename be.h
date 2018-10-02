@@ -7,8 +7,8 @@
 class Predicate;
 class Trigger;
 
-#define MAX_LEAVES    8 * sizeof(uint64_t)
-#define MAX_INTERVAL  128
+#define MAX_LEAVES        8 * sizeof(uint64_t) - 1
+#define MAX_INTERVAL_END  MAX_LEAVES
 
 struct BE {
 	enum struct Type {

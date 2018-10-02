@@ -61,16 +61,33 @@ namespace
 		return cnt;
 	}
 
-	void assignPredIndex(UPtr<BE>& root, int& cur, Trigger* trigger)
+	void collectPreds(UPtr<BE>& root, Vector<Pred*>& preds)
 	{
 		for (auto& be : *root->children()) {
-			if (be->type == BE::Type::PRED) {
-				trigger->preds[cur] = static_cast<Pred*>(be.get());
-				trigger->preds[cur]->index = cur;
-				if (cur++ > MAX_LEAVES)
-					throw std::runtime_error{"too many leaf nodes"};
-			} else
-				assignPredIndex(be, cur, trigger);
+			if (be->type == BE::Type::PRED)
+				preds.push_back(static_cast<Pred*>(be.get()));
+			else
+				collectPreds(be, preds);
+		}
+	}
+
+	void assignPredIndex(UPtr<BE>& root, Trigger* trigger)
+	{
+		// collect all the predicates first
+		Vector<Pred*> preds;
+		collectPreds(root, preds);
+
+		// sort predicates based on (intvStart, intvEnd)
+		std::sort(preds.begin(), preds.end(), [](Pred* a, Pred* b) {
+			return a->intvStart < b->intvStart || (a->intvStart == b->intvStart && a->intvEnd < b->intvEnd);
+		});
+
+		if (preds.size() > MAX_LEAVES)
+			throw std::runtime_error{"too many predicates"};
+
+		for (int i = 0; i < preds.size(); i++) {
+			preds[i]->index = i;
+			trigger->preds[i] = preds[i];
 		}
 	}
 
@@ -87,6 +104,7 @@ namespace
 
 	void assignInterval(UPtr<BE>& root, int leftLeaves, int start, int end)
 	{
+
 		if (root->type == BE::Type::PRED) {
 			static_cast<Pred*>(root.get())->setInterval(start, end);
 			return;
@@ -113,7 +131,7 @@ namespace
 				left += children[0]->leaves;
 
 				for (int i = 1; i < cnt-1; i++) {
-					int size = (children[i]->type == BE::Type::PRED ? 1 : children[i]->children()->size());
+					int size = children[i]->leaves;
 					assignInterval(children[i], left, cur, cur+size-1);
 					left += children[i]->leaves;
 					cur += size;
@@ -130,7 +148,7 @@ namespace
 		auto n = indent * 2;
 		Vector<UPtr<BE>>* ops = be->children();
 
-		printf("%*s%d.%s #leaves=%d [\n", n, "", index, be->type == BE::Type::AND ? "AND" : "OR", be->leaves);
+		printf("%*s%d.%s leaves=%d [\n", n, "", index, be->type == BE::Type::AND ? "AND" : "OR", be->leaves);
 
 		for (size_t max = ops->size(), i = 0; i < max; i++) {
 			UPtr<BE>& be = (*ops)[i];
@@ -165,10 +183,9 @@ UPtr<BE> parseBE(const Json& spec, std::map<String, UPtr<Predicate>>& predicates
 	if (v[0]->type == BE::Type::PRED)
 		throw std::runtime_error{"Root must be AND or OR"};
 
-	int index = 0;
-	assignPredIndex(v[0], index, trigger);
 	assignLeaves(v[0]);
-	assignInterval(v[0], 0, 1, MAX_INTERVAL);
+	assignInterval(v[0], 0, 1, MAX_INTERVAL_END);
+	assignPredIndex(v[0], trigger);
 
 	return std::move(v[0]);
 }
