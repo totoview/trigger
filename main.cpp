@@ -96,9 +96,6 @@ int main(int argc, char* argv[]) {
 	} catch (std::exception& ex) {
 		std::cerr << "Failed to parse input: " << ex.what() << '\n';
 		return EXIT_FAILURE;
-	} catch (std::string& msg) {
-		std::cerr << msg << '\n';
-		return EXIT_FAILURE;
 	}
 
 	return EXIT_SUCCESS;

@@ -55,17 +55,15 @@ void Matcher::init()
 
 	hs_compile_error_t* err;
 	if (hs_compile_multi(patterns, flags, ids, cnt, HS_MODE_BLOCK, NULL, &db, &err) != HS_SUCCESS) {
-		std::string msg = std::string{"failed to compile patterns: "} + err->message;
 		hs_free_compile_error(err);
 		delete [] patterns;
 		delete [] flags;
 		delete [] ids;
-		throw msg;
+		throw std::runtime_error{err->message};
 	}
 
-	if (hs_alloc_scratch(db, &scratch) != HS_SUCCESS) {
-		throw "failed to allocate scratch space";
-	}
+	if (hs_alloc_scratch(db, &scratch) != HS_SUCCESS)
+		throw std::runtime_error{"failed to allocate scratch space"};
 
 	delete [] patterns;
 	delete [] flags;
