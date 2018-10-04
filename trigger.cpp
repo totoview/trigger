@@ -64,14 +64,12 @@ void Trigger::print() const
 
 bool Trigger::check()
 {
-	if (matched == 0) return false;
-
 	uint64_t f = MATCHED[0];
 	uint64_t m = matched;
 	for (int i = 0; m && i < MAX_LEAVES; i++) {
 		if (m & MATCHED[i]) {
-			if (f & MATCHED[preds[i]->intvStart-1])
-				f |= MATCHED[preds[i]->intvEnd];
+			if (f & starts[i])
+				f |= ends[i];
 			m &= MASK[i];
 		}
 	}

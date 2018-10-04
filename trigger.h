@@ -22,11 +22,13 @@ public:
 	int totalLeaves{0};
 
 	void clearMatched() { matched = 0; }
-	void addMatched(Pred* p) { matched |= MATCHED[p->index]; }
+	void addMatched(Pred* p) { matched |= p->flagMatched; }
 	bool hasMatched() const { return matched != 0; }
 
 	uint64_t matched{0};
 	std::array<Pred*, 64> preds;
+	std::array<uint64_t, 64> starts;
+	std::array<uint64_t, 64> ends;
 };
 
 #endif

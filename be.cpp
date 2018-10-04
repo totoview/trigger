@@ -87,7 +87,10 @@ namespace
 
 		for (int i = 0; i < preds.size(); i++) {
 			preds[i]->index = i;
+			preds[i]->flagMatched = MATCHED[i];
 			trigger->preds[i] = preds[i];
+			trigger->starts[i] = MATCHED[preds[i]->intvStart-1];
+			trigger->ends[i] = MATCHED[preds[i]->intvEnd];
 		}
 	}
 

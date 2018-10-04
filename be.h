@@ -45,6 +45,8 @@ struct Pred : BE {
 	Predicate* pred;
 	Trigger* trigger;
 
+	uint64_t flagMatched;
+
 	// used by Trigger for evaluation
 	int index{-1};  // index of sorted predicates
 	int intvStart;  // interval start

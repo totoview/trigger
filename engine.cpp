@@ -237,7 +237,7 @@ const Vector<uint64_t>& Engine::match(Vector<VarValue>& input, bool printMatched
 #endif
 
 	for (auto& t : triggers) {
-		if (t->check())
+		if (t->matched && t->check())
 			matchedTriggers.push_back(t->cid);
 	}
 
@@ -300,7 +300,7 @@ void Engine::bench_match(Vector<VarValue>& input, int total)
 
 		matchedTriggers.clear();
 		for (auto& t : triggers) {
-			if (t->check())
+			if (t->matched && t->check())
 				matchedTriggers.push_back(t->cid);
 		}
 		if (!matchedTriggers.empty()) cnt++;
