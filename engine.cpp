@@ -1,5 +1,5 @@
+#include <chrono>
 #include <iostream>
-#include <set>
 #include "engine.h"
 #include "util.h"
 
@@ -54,10 +54,14 @@ Engine::Engine(const std::string& s) {
 	parseTriggers(spec);
 
 	// init matchers
-	for (auto& v : variables) {
-		if (v.second->matcher)
-			v.second->matcher->init();
+	for (auto& [name, var] : variables) {
+		if (var->matcher)
+			var->matcher->init();
 	}
+
+	// init predicates
+	for (auto& [name, pred] : *predicates)
+		pred->init();
 
 	matchedPreds.reserve(512);
 	matchedTriggers.reserve(512);
@@ -222,11 +226,8 @@ const Vector<uint64_t>& Engine::match(Vector<VarValue>& input, bool printMatched
 	for (auto& t : triggers)
 		t->clearMatched();
 
-	for (const auto& p : matchedPreds) {
-		for (const auto& p2 : p->preds) {
-			p2->trigger->addMatched(p2);
-		}
-	}
+	for (const auto& p : matchedPreds)
+		p->apply();
 
 #ifdef __DEBUG__
 	std::cout << "===== group by triggers ======\n";
@@ -293,10 +294,8 @@ void Engine::bench_match(Vector<VarValue>& input, int total)
 		for (auto& t : triggers)
 			t->clearMatched();
 
-		for (const auto& p : matchedPreds) {
-			for (const auto& p2 : p->preds)
-				p2->trigger->addMatched(p2);
-		}
+		for (const auto& p : matchedPreds)
+			p->apply();
 
 		matchedTriggers.clear();
 		for (auto& t : triggers) {

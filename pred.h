@@ -7,6 +7,7 @@
 
 class Variable;
 class Pred;
+class Trigger;
 
 class Predicate : public Comparable<Predicate> {
 public:
@@ -22,6 +23,8 @@ public:
 	virtual ~Predicate() = default;
 
 	Type type() { return ptype; }
+	void init();
+	void apply();
 
 	String name;
 	Vector<Pred*> preds;
@@ -29,6 +32,13 @@ public:
 protected:
 	Predicate(const std::string& n, Type t) : name(n), ptype(t) {}
 	Type ptype;				// predicate type
+private:
+	struct TriggerData {
+		explicit TriggerData(Trigger* p, uint64_t m) : trigger(p), matched(m) {}
+		Trigger* trigger;
+		uint64_t matched;
+	};
+	Vector<TriggerData> triggers;
 };
 
 

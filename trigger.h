@@ -22,7 +22,7 @@ public:
 	int totalLeaves{0};
 
 	void clearMatched() { matched = 0; }
-	void addMatched(Pred* p) { matched |= MATCHED[p->index]; }
+	void addMatched(uint64_t m) { matched |= m; }
 	bool hasMatched() const { return matched != 0; }
 
 	uint64_t matched{0};
