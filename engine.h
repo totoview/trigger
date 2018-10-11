@@ -12,24 +12,29 @@ class Engine {
 public:
 	explicit Engine(const std::string& jsonSpec);
 
-	const Vector<uint64_t>& match(Vector<VarValue>& input, bool printMatchedPred = false);
-	void bench_match(Vector<VarValue>& input, int total);
+	void match(Vector<std::tuple<String, VarValue>>& input, Vector<uint32_t>& output, bool printMatchedPred = false);
+	void match(Vector<std::tuple<int, VarValue>>& input, Vector<uint32_t>& output, bool printMatchedPred = false);
 
-	std::map<uint64_t, String> getTriggerMap() const;
+	void bench_match(Vector<std::tuple<String, VarValue>>& input, int total);
+
+	std::map<String, int> getVariableNameIndexes() const;
+	std::map<uint32_t, String> getTriggerIdNames() const;
 
 private:
+	Variable* findVariable(const std::string& name) const;
+
 	void parseVariables(const Json& spec);
 	void parsePredicates(const Json& spec);
 	void parseTriggers(const Json& spec);
 
 private:
-	std::map<String, UPtr<Variable>> variables;
+	Vector<UPtr<Variable>> variables;
 	UPtr<PredMap> predicates;
 	Vector<UPtr<Trigger>> triggers;
 
 	// for trigger evaluation
 	Vector<Predicate*> matchedPreds{};
-	Vector<uint64_t> matchedTriggers{};
+	Vector<uint32_t> matchedTriggers{};
 };
 
 #endif

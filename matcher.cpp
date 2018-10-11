@@ -72,7 +72,7 @@ void Matcher::init()
 
 size_t Matcher::match(Vector<Predicate*>& c)
 {
-	const char* input = var->stringValue.c_str();
+	const char* input = std::get<String>(var->value).c_str();
 	results = &c;
 	matchCnt = 0;
 

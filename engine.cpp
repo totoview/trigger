@@ -1,5 +1,6 @@
+#include <chrono>
 #include <iostream>
-#include <set>
+#include <tuple>
 #include "engine.h"
 #include "util.h"
 
@@ -55,12 +56,21 @@ Engine::Engine(const std::string& s) {
 
 	// init matchers
 	for (auto& v : variables) {
-		if (v.second->matcher)
-			v.second->matcher->init();
+		if (v->matcher)
+			v->matcher->init();
 	}
 
 	matchedPreds.reserve(512);
 	matchedTriggers.reserve(512);
+}
+
+Variable* Engine::findVariable(const std::string& name) const
+{
+	for (const auto& v : variables) {
+		if (v->name == name)
+			return v.get();
+	}
+	return nullptr;
 }
 
 void Engine::parseVariables(const Json& spec)
@@ -69,7 +79,7 @@ void Engine::parseVariables(const Json& spec)
 		auto& spec = e.value();
 		try {
 			auto type = util::findString(spec, "type");
-			variables.emplace(std::make_pair(e.key(), std::make_unique<Variable>(e.key(), Variable::Types.at(type.get<std::string>()))));
+			variables.push_back(std::make_unique<Variable>(e.key(), Variable::Types.at(type.get<std::string>())));
 		} catch (std::exception& err) {
 			throw std::runtime_error{"Invalid variable spec for " + e.key() + ": " + err.what()};
 		}
@@ -85,51 +95,39 @@ void Engine::parsePredicates(const Json& spec)
 
 		try {
 			auto input = util::findArray(spec, "input");
-			auto type = Predicate::Types.at(util::findString(spec, "type").get<std::string>());
+			auto var = parseInput(e.key(), input[0]);
+			auto pv = findVariable(var.name);
+			if (!pv)
+				throw std::runtime_error{"Invalid predicate (var '" + var.name + "' not found) for " + e.key()};
 
+			auto type = Predicate::Types.at(util::findString(spec, "type").get<std::string>());
 			switch (type) {
 				default:
 					throw std::runtime_error{"Invalid predicate type"};
+
 				case Predicate::Type::BOOL_EQ:
 				{
-					auto var = parseInput(e.key(), input[0]);
 					auto val = parseBool(e.key(), input[1]);
-
-					if (variables.find(var.name) == variables.end())
-						throw std::runtime_error{"Invalid predicate (var '" + var.name + "' not found) for " + e.key()};
-
-					auto& pv = variables[var.name];
-					predicates->emplace(std::make_pair(e.key(), std::make_unique<PBoolEQ>(e.key(), pv.get(), val)));
+					predicates->emplace(std::make_pair(e.key(), std::make_unique<PBoolEQ>(e.key(), pv, val)));
 					pv->predicates.push_back((*predicates)[e.key()].get());
 				}
 					break;
+
 				case Predicate::Type::INT_LT:
 				{
-					auto var = parseInput(e.key(), input[0]);
 					auto val = parseInt(e.key(), input[1]);
-
-					if (variables.find(var.name) == variables.end())
-						throw std::runtime_error{"Invalid predicate (var '" + var.name + "' not found) for " + e.key()};
-
-					auto& pv = variables[var.name];
-					predicates->emplace(std::make_pair(e.key(), std::make_unique<PIntLT>(e.key(), pv.get(), val)));
+					predicates->emplace(std::make_pair(e.key(), std::make_unique<PIntLT>(e.key(), pv, val)));
 					pv->predicates.push_back((*predicates)[e.key()].get());
 				}
 					break;
+
 				case Predicate::Type::STRING_MATCH:
 				{
-					auto var = parseInput(e.key(), input[0]);
 					auto pat = parsePattern(e.key(), input[1]);
-
-					if (variables.find(var.name) == variables.end())
-						throw std::runtime_error{"Invalid predicate (var '" + var.name + "' not found) for " + e.key()};
-
-					auto& pv = variables[var.name];
-
 					if (!pv->matcher)
-						pv->matcher = std::make_unique<Matcher>(pv.get());
+						pv->matcher = std::make_unique<Matcher>(pv);
 
-					predicates->emplace(std::make_pair(e.key(), std::make_unique<PStringMatch>(e.key(), pv.get(), pat.pattern)));
+					predicates->emplace(std::make_pair(e.key(), std::make_unique<PStringMatch>(e.key(), pv, pat.pattern)));
 					pv->matcher->add((*predicates)[e.key()].get());
 				}
 					break;
@@ -155,67 +153,65 @@ void Engine::parseTriggers(const Json& spec)
 	}
 }
 
-std::map<uint64_t, String> Engine::getTriggerMap() const
+std::map<String, int> Engine::getVariableNameIndexes() const
 {
-	std::map<uint64_t, String> m;
-	for (const auto& t : triggers) {
-		m[t->cid] = t->name;
-	}
+	std::map<String, int> m;
+	for (int i = 0; i < variables.size(); i++)
+		m[variables[i]->name] = i;
 	return std::move(m);
 }
 
-const Vector<uint64_t>& Engine::match(Vector<VarValue>& input, bool printMatchedPred)
+std::map<uint32_t, String> Engine::getTriggerIdNames() const
+{
+	std::map<uint32_t, String> m;
+	for (const auto& t : triggers)
+		m[t->cid] = t->name;
+	return std::move(m);
+}
+
+void Engine::match(Vector<std::tuple<String, VarValue>>& input, Vector<uint32_t>& output, bool printMatchedPred)
+{
+	auto varNameIndexes = getVariableNameIndexes();
+	Vector<std::tuple<int, VarValue>> input2;
+
+	for (auto& [name, value] : input) {
+		if (varNameIndexes.find(name) == varNameIndexes.end())
+			throw std::runtime_error{"Variable not found: " + name.toStdString()};
+		input2.push_back(std::make_tuple(varNameIndexes[name], value));
+	}
+
+	return match(input2, output, printMatchedPred);
+}
+
+void Engine::match(Vector<std::tuple<int, VarValue>>& input, Vector<uint32_t>& output, bool printMatchedPred)
 {
 	matchedPreds.clear();
 	matchedTriggers.clear();
 
-	Vector<Predicate*> preds{};
-	Vector<Matcher*> matchers{};
+	for (const auto& [i, value] : input) {
+		auto& v = variables[i];
+		v->value = value;
 
-	// collect relevant predicates and matchers
-	for (const auto& i : input) {
-		if (variables.find(i.name) == variables.end())
-			throw std::runtime_error{"Variable not found: " + i.name.toStdString()};
-
-		auto& v = variables[i.name];
-		switch (v->type) {
-			case Variable::Type::BOOL:
-				v->boolValue = std::get<bool>(i.value);
-				break;
-			case Variable::Type::INT:
-				v->intValue = std::get<int>(i.value);
-				break;
-			case Variable::Type::STRING:
-				v->stringValue = std::get<String>(i.value);
-				break;
+		for (auto& p : v->predicates) {
+#ifdef __DEBUG__
+			std::cout << "= check pred: name=" << p->name << " cid=" << p->cid << '\n';
+#endif
+			if (p->eval())
+				matchedPreds.push_back(p);
 		}
-		std::copy(v->predicates.begin(), v->predicates.end(), std::inserter(preds, preds.end()));
 
-		if (v->matcher)
-			matchers.push_back(v->matcher.get());
-	}
-
-	// evaluate predicates and matchers
-
-	for (auto& p : preds) {
+		if (v->matcher) {
 #ifdef __DEBUG__
-		std::cout << "= check pred: name=" << p->name << " cid=" << p->cid << '\n';
+			std::cout << "= check matcher: var=" << v->matcher->variable() << '\n';
 #endif
-		if (p->eval())
-			matchedPreds.push_back(p);
-	}
-
-	for (auto& m : matchers) {
-#ifdef __DEBUG__
-		std::cout << "= check matcher: var=" << m->variable() << '\n';
-#endif
-		m->match(matchedPreds);
+			v->matcher->match(matchedPreds);
+		}
 	}
 
 	if (printMatchedPred) {
-		printf("================= MATCHED PREDICATES ====================\n");
+		std::cout << "================= MATCHED PREDICATES ====================\n";
 		for (const auto& p : matchedPreds)
-			printf("%s\n", p->name.c_str());
+			std::cout << p->name << '\n';
 	}
 
 	// evaluate triggers
@@ -238,56 +234,41 @@ const Vector<uint64_t>& Engine::match(Vector<VarValue>& input, bool printMatched
 
 	for (auto& t : triggers) {
 		if (t->check())
-			matchedTriggers.push_back(t->cid);
+			output.push_back(t->cid);
 	}
-
-	return matchedTriggers;
 }
 
-
-void Engine::bench_match(Vector<VarValue>& input, int total)
+void Engine::bench_match(Vector<std::tuple<String, VarValue>>& input, int total)
 {
 	Vector<Predicate*> preds{};
 	Vector<Matcher*> matchers{};
 
 	// collect relevant predicates and matchers
-	for (const auto& i : input) {
-		if (variables.find(i.name) == variables.end())
-			throw std::runtime_error{"Variable not found: " + i.name.toStdString()};
+	for (auto& [name, value] : input) {
+		if (auto v = findVariable(name.toStdString()); v) {
+			v->value = value;
+			std::copy(v->predicates.begin(), v->predicates.end(), std::inserter(preds, preds.end()));
 
-		auto& v = variables[i.name];
-		switch (v->type) {
-			case Variable::Type::BOOL:
-				v->boolValue = std::get<bool>(i.value);
-				break;
-			case Variable::Type::INT:
-				v->intValue = std::get<int>(i.value);
-				break;
-			case Variable::Type::STRING:
-				v->stringValue = std::get<String>(i.value);
-				break;
-		}
-		std::copy(v->predicates.begin(), v->predicates.end(), std::inserter(preds, preds.end()));
-
-		if (v->matcher)
-			matchers.push_back(v->matcher.get());
+			if (v->matcher)
+				matchers.push_back(v->matcher.get());
+		} else
+			throw std::runtime_error{"Variable not found: " + name.toStdString()};
 	}
 
 	auto cnt = 0;
 	auto start = std::chrono::high_resolution_clock::now();
 
 	for (auto i = 0; i < total; i++) {
-		// evaluate predicates and matchers
 		matchedPreds.clear();
 
+		// evaluate predicates and matchers
 		for (auto& p : preds) {
 			if (p->eval())
 				matchedPreds.push_back(p);
 		}
 
-		for (auto& m : matchers) {
+		for (auto& m : matchers)
 			m->match(matchedPreds);
-		}
 
 		// evaluate triggers
 		for (auto& t : triggers)

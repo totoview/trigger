@@ -1,5 +1,5 @@
 #include <chrono>
-#include <cstdio>
+#include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <regex>
@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
 		ssSpec << ifsSpec.rdbuf();
 
 		// parse input data
-		Vector<VarValue> input;
+		Vector<std::tuple<String, VarValue>> input;
 
 		auto pattern {R"(^([^\s]+)\s*(.*)\s*$)"s};
 		auto rx = std::regex{pattern};
@@ -48,50 +48,72 @@ int main(int argc, char* argv[]) {
 					namelen = std::max(namelen, name.size());
 
 					if (value == "true") {
-						input.push_back(VarValue{ name, true });
+						input.push_back(std::make_tuple<String, VarValue>(name, true));
 					} else if (value == "false") {
-						input.push_back(VarValue{ name, false });
+						input.push_back(std::make_tuple<String, VarValue>(name, false));
 					} else {
 						try {
-							input.push_back(VarValue{ name, std::stoi(value) });
+							input.push_back(std::make_tuple<String, VarValue>(name, std::stoi(value)));
 						} catch (...) {
-							input.push_back(VarValue{ name, String{value}});
+							input.push_back(std::make_tuple<String, VarValue>(name, String{value}));
 						}
 					}
-				} else {
-					printf("*** [WARN] ignore line: '%s'\n", line.c_str());
-				}
+				} else
+					std::cout << "*** [WARN] ignore line: '" << line << "'\n";
 			}
 		}
 
-		printf("======================== INPUT ==========================\n");
-		for (const auto& v : input) {
-			printf("%*s: ", int(namelen), v.name.c_str());
+		std::cout << "======================== INPUT ==========================\n";
+		for (const auto& [name, value] : input) {
+			std::cout << std::setw(namelen) << name << ": ";
 			try {
-				int n = std::get<int>(v.value);
-				printf("%d (int)\n", n);
+				int n = std::get<int>(value);
+				std::cout << n << " (int)\n";
 			} catch (...) {
 				try {
-					bool f = std::get<bool>(v.value);
-					printf("%s (bool)\n", f ? "true" : "false");
+					bool f = std::get<bool>(value);
+					std::cout << (f ? "true" : "false") << " (bool)\n";
 				} catch (...) {
-					printf("%s (string)\n", std::get<String>(v.value).c_str());
+					std::cout << std::get<String>(value) << " (string)\n";
 				}
 			}
 		}
 
 		Engine engine{ssSpec.str()};
 
+		// convert name-based input to index-based input
+		auto varNameIndexes = engine.getVariableNameIndexes();
+		Vector<std::tuple<int, VarValue>> input2;
 
-		auto fired = engine.match(input, true);
+		for (auto& [name, value] : input) {
+			if (varNameIndexes.find(name) == varNameIndexes.end())
+				throw std::runtime_error{"Variable not found: " + name.toStdString()};
+			input2.push_back(std::make_tuple(varNameIndexes[name], value));
+		}
 
-		printf("=================== FIRED TRIGGERS ======================\n");
-		auto triggerMap = engine.getTriggerMap();
+
+		Vector<uint32_t> fired;
+		engine.match(input2, fired, true);
+
+		std::cout << "=================== FIRED TRIGGERS ======================\n";
+		auto triggerMap = engine.getTriggerIdNames();
 		for (auto t : fired)
-			printf("%s\n", triggerMap[t].c_str());
+			std::cout << triggerMap[t] << '\n';
 
-		printf("====================== BENCHMARK ========================\n");
-		engine.bench_match(input, 1000000);
+		auto total = 5000000;
+
+		// std::cout << "====================== BENCHMARK ========================\n";
+		// auto start = std::chrono::high_resolution_clock::now();
+		// for (auto i = 0; i < total; i++) {
+		// 	fired.clear();
+		// 	engine.match(input2, fired, false);
+		// }
+		// auto diff = std::chrono::high_resolution_clock::now() - start;
+		// auto us = std::chrono::duration<double,std::micro>(diff).count();
+		// std::cout << total << " matches completed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " matches/s)\n";
+
+		std::cout << "====================== BENCHMARK ========================\n";
+		engine.bench_match(input, total);
 
 	} catch (std::exception& ex) {
 		std::cerr << "Failed to parse input: " << ex.what() << '\n';

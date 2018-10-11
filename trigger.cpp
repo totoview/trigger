@@ -50,7 +50,7 @@ Trigger::Trigger(const std::string& n,
 
 void Trigger::print() const
 {
-	printf("[Trigger] id=%lld, name=%s totalLeaves=%d\n", cid, name.c_str(), totalLeaves);
+	printf("[Trigger] id=%u, name=%s totalLeaves=%d\n", cid, name.c_str(), totalLeaves);
 
 	printf("= BE:\n");
 	printBE(be);

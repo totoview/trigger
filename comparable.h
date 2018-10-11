@@ -12,13 +12,13 @@ struct Comparable {
 		return cid < rhs.cid;
 	}
 
-	uint64_t cid{cid_seed.fetch_add(1)};
+	uint32_t cid{cid_seed.fetch_add(1)};
 
 private:
-	static std::atomic_uint64_t cid_seed;
+	static std::atomic_uint32_t cid_seed;
 };
 
 template <typename T>
-std::atomic_uint64_t Comparable<T>::cid_seed{0};
+std::atomic_uint32_t Comparable<T>::cid_seed{0};
 
 #endif

@@ -33,7 +33,7 @@ PIntLT::PIntLT(const std::string& name, Variable* v, int n)
 
 bool PIntLT::eval() const
 {
-	return var->intValue < max;
+	return std::get<int>(var->value) < max;
 }
 
 // BOOL_EQ
@@ -47,5 +47,5 @@ PBoolEQ::PBoolEQ(const std::string& name, Variable* v, bool f)
 
 bool PBoolEQ::eval() const
 {
-	return var->boolValue == expected;
+	return std::get<bool>(var->value) == expected;
 }
