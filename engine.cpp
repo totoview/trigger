@@ -1,5 +1,6 @@
 #include <chrono>
 #include <iostream>
+#include <sstream>
 #include <tuple>
 #include "engine.h"
 #include "util.h"
@@ -42,7 +43,20 @@ namespace
 	}
 }
 
-Engine::Engine(const std::string& s) {
+Engine::Engine(std::ifstream input)
+{
+	std::stringstream ss;
+	ss << input.rdbuf();
+	init(ss.str());
+}
+
+Engine::Engine(const std::string& s)
+{
+	init(s);
+}
+
+void Engine::init(const std::string& s)
+{
 	auto spec = Json::parse(s);
 
 	// std::cout << spec.dump(4) << std::endl;

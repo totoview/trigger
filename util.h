@@ -3,9 +3,12 @@
 
 #include "common.h"
 #include "json.h"
+#include "var.h"
 
 namespace util
 {
+	Vector<std::tuple<String, VarValue>> readInput(const std::string filename);
+
 	const Json& findObj(const Json& spec, const std::string&& name);
 	const Json& findArray(const Json& spec, const std::string&& name);
 	const Json& findString(const Json& spec, const std::string&& name);

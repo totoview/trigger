@@ -2,10 +2,7 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
-#include <regex>
-#include <sstream>
 #include <stdexcept>
-#include "var.h"
 #include "engine.h"
 #include "util.h"
 
@@ -18,51 +15,16 @@ int main(int argc, char* argv[]) {
 	}
 
 	try {
-		// parse trigger spec
-		std::ifstream ifsSpec{argv[1], std::ios::binary};
-
-		if (!ifsSpec) {
-			std::cerr << "Failed to open input\n";
-			return EXIT_FAILURE;
-		}
-
-		std::stringstream ssSpec;
-		ssSpec << ifsSpec.rdbuf();
+		using VarInput = std::tuple<String, VarValue>;
 
 		// parse input data
-		Vector<std::tuple<String, VarValue>> input;
+		Vector<VarInput> input = util::readInput(argv[2]);
+		auto it = std::max_element(input.begin(), input.end(), [](VarInput& a, VarInput& b) {
+			return std::get<0>(a).size() < std::get<0>(b).size();
+		});
+		auto namelen = std::get<0>(*it).size();
 
-		auto pattern {R"(^([^\s]+)\s*(.*)\s*$)"s};
-		auto rx = std::regex{pattern};
-		size_t namelen{0};
-
-		std::ifstream ifsInput{argv[2]};
-
-		for (std::string line; std::getline(ifsInput, line);) {
-			util::trim(line);
-			if (!line.empty()) {
-				auto match = std::smatch{};
-				if (std::regex_search(line, match, rx)) {
-					std::string name = match[1];
-					std::string value = match[2];
-					namelen = std::max(namelen, name.size());
-
-					if (value == "true") {
-						input.push_back(std::make_tuple<String, VarValue>(name, true));
-					} else if (value == "false") {
-						input.push_back(std::make_tuple<String, VarValue>(name, false));
-					} else {
-						try {
-							input.push_back(std::make_tuple<String, VarValue>(name, std::stoi(value)));
-						} catch (...) {
-							input.push_back(std::make_tuple<String, VarValue>(name, String{value}));
-						}
-					}
-				} else
-					std::cout << "*** [WARN] ignore line: '" << line << "'\n";
-			}
-		}
-
+		// print input
 		std::cout << "======================== INPUT ==========================\n";
 		for (const auto& [name, value] : input) {
 			std::cout << std::setw(namelen) << name << ": ";
@@ -79,7 +41,8 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
-		Engine engine{ssSpec.str()};
+		// parse trigger spec
+		Engine engine{std::ifstream{argv[1], std::ios::binary}};
 
 		// convert name-based input to index-based input
 		auto varNameIndexes = engine.getVariableNameIndexes();
