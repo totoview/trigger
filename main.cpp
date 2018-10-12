@@ -1,12 +1,9 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
-#include <fstream>
 #include <stdexcept>
 #include "engine.h"
 #include "util.h"
-
-using namespace std::string_literals;
 
 int main(int argc, char* argv[]) {
 	if (argc != 3) {
@@ -42,7 +39,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		// parse trigger spec
-		Engine engine{std::ifstream{argv[1], std::ios::binary}};
+		Engine engine{util::readFile(argv[1])};
 
 		// convert name-based input to index-based input
 		auto varNameIndexes = engine.getVariableNameIndexes();
@@ -59,11 +56,18 @@ int main(int argc, char* argv[]) {
 		engine.match(input2, fired, true);
 
 		std::cout << "=================== FIRED TRIGGERS ======================\n";
-		auto triggerMap = engine.getTriggerIdNames();
+		auto triggerNames = engine.getTriggerIdNames();
 		for (auto t : fired)
-			std::cout << triggerMap[t] << '\n';
+			std::cout << triggerNames[t] << '\n';
 
-		auto total = 5000000;
+		std::cout << "Warm up...";
+		for (auto i = 0; i < 1'000'000; i++) {
+			fired.clear();
+			engine.match(input2, fired, false);
+		}
+		std::cout << "done\n";
+
+		auto total = 10'000'000;
 
 		// std::cout << "====================== BENCHMARK ========================\n";
 		// auto start = std::chrono::high_resolution_clock::now();
@@ -73,7 +77,7 @@ int main(int argc, char* argv[]) {
 		// }
 		// auto diff = std::chrono::high_resolution_clock::now() - start;
 		// auto us = std::chrono::duration<double,std::micro>(diff).count();
-		// std::cout << total << " matches completed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " matches/s)\n";
+		// std::cout << total << " requests processed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " req/s)\n";
 
 		std::cout << "====================== BENCHMARK ========================\n";
 		engine.bench_match(input, total);

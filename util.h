@@ -7,6 +7,7 @@
 
 namespace util
 {
+	std::string readFile(const std::string filename);
 	Vector<std::tuple<String, VarValue>> readInput(const std::string filename);
 
 	const Json& findObj(const Json& spec, const std::string&& name);

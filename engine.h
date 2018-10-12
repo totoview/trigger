@@ -1,7 +1,6 @@
 #ifndef __ENGINE_H__
 #define __ENGINE_H__
 
-#include <fstream>
 #include <map>
 #include "var.h"
 #include "pred.h"
@@ -11,7 +10,6 @@ using PredMap = std::map<String, UPtr<Predicate>>;
 
 class Engine {
 public:
-	explicit Engine(std::ifstream input);
 	explicit Engine(const std::string& jsonSpec);
 
 	void match(Vector<std::tuple<String, VarValue>>& input, Vector<uint32_t>& output, bool printMatchedPred = false);

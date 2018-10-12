@@ -1,6 +1,5 @@
 #include <chrono>
 #include <iostream>
-#include <sstream>
 #include <tuple>
 #include "engine.h"
 #include "util.h"
@@ -41,13 +40,6 @@ namespace
 			return util::findInt(spec, "value").get<int>();
 		}
 	}
-}
-
-Engine::Engine(std::ifstream input)
-{
-	std::stringstream ss;
-	ss << input.rdbuf();
-	init(ss.str());
 }
 
 Engine::Engine(const std::string& s)
@@ -303,5 +295,5 @@ void Engine::bench_match(Vector<std::tuple<String, VarValue>>& input, int total)
 
 	auto diff = std::chrono::high_resolution_clock::now() - start;
 	auto us = std::chrono::duration<double,std::micro>(diff).count();
-	std::cout << total << " matches completed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " matches/s)\n";
+	std::cout << total << " requests processed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " req/s)\n";
 }

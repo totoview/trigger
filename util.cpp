@@ -40,6 +40,16 @@ namespace
 
 namespace util
 {
+	std::string readFile(const std::string filename)
+	{
+		std::ifstream ifs(filename, std::ios::binary);
+		if (!ifs)
+			throw std::runtime_error("Failed to open file" + filename);
+		std::stringstream ss;
+		ss << ifs.rdbuf();
+		return std::move(ss.str());
+	}
+
 	Vector<std::tuple<String, VarValue>> readInput(const std::string filename) {
 		Vector<std::tuple<String, VarValue>> input;
 

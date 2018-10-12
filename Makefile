@@ -15,13 +15,13 @@ LDFLAGS = -lfolly -lhs
 .PHONY: all
 .SUFFIXES: $(SUFFIXES) .cpp .o
 
-srcs = engine.cpp matcher.cpp trigger.cpp pred.cpp var.cpp be.cpp util.cpp
+srcs = service.cpp engine.cpp matcher.cpp trigger.cpp pred.cpp var.cpp be.cpp util.cpp
 objs = $(srcs:.cpp=.o)
 
 .cpp.o:
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-all: trigger
+all: trigger bench
 
 libtrigger.a: $(objs)
 	rm -f $@
@@ -30,6 +30,9 @@ libtrigger.a: $(objs)
 
 trigger: libtrigger.a main.o
 	$(CC) $(LDFLAGS) -o $@ main.o $<
+
+bench: libtrigger.a bench.o
+	$(CC) $(LDFLAGS) -o $@ bench.o $<
 
 clean:
 	@rm -f trigger libtrigger.a *.o
