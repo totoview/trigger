@@ -60,6 +60,7 @@ int main(int argc, char* argv[]) {
 		for (auto t : fired)
 			std::cout << triggerNames[t] << '\n';
 
+		std::cout << "====================== BENCHMARK ========================\n";
 		std::cout << "Warm up...";
 		for (auto i = 0; i < 1'000'000; i++) {
 			fired.clear();
@@ -69,7 +70,6 @@ int main(int argc, char* argv[]) {
 
 		auto total = 10'000'000;
 
-		// std::cout << "====================== BENCHMARK ========================\n";
 		// auto start = std::chrono::high_resolution_clock::now();
 		// for (auto i = 0; i < total; i++) {
 		// 	fired.clear();
@@ -79,7 +79,6 @@ int main(int argc, char* argv[]) {
 		// auto us = std::chrono::duration<double,std::micro>(diff).count();
 		// std::cout << total << " requests processed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " req/s)\n";
 
-		std::cout << "====================== BENCHMARK ========================\n";
 		engine.bench_match(input, total);
 
 	} catch (std::exception& ex) {

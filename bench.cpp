@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <chrono>
 #include <iostream>
 #include <iomanip>
 #include <tuple>
@@ -9,8 +10,8 @@
 
 int main(int argc, char* argv[])
 {
-   	if (argc != 3) {
-		std::cerr << "Usage: trigger <spec> <input>\n";
+	if (argc != 3) {
+		std::cerr << "Usage: bench <spec> <input>\n";
 		return EXIT_FAILURE;
 	}
 
@@ -41,19 +42,42 @@ int main(int argc, char* argv[])
 			}
 		}
 
-        Service service{util::readFile(argv[1]), [](ServiceResult* res) {
+		std::atomic_uint32_t cnt{0};
+		Service service{util::readFile(argv[1]), [&cnt](Service::Result* res) {
+			cnt++;
+		}};
 
-        }};
+		// convert name-based input to index-based input
+		auto varNameIndexes = service.getVariableNameIndexes();
+		Vector<std::tuple<int, VarValue>> input2;
 
-        service.start();
+		for (auto& [name, value] : input) {
+			if (varNameIndexes.find(name) == varNameIndexes.end())
+				throw std::runtime_error{"Variable not found: " + name.toStdString()};
+			input2.push_back(std::make_tuple(varNameIndexes[name], value));
+		}
 
-        for (;;) {
-        }
-        
-        service.shutdown();
-    } catch (const std::exception& ex) {
+		service.start();
+
+		auto start = std::chrono::high_resolution_clock::now();
+		int total = 10'000'000;
+
+		for (auto i = 0; i < total; i++) {
+			while (service.tryMatch(&input2) == Service::ERR_REQ_ID);
+		}
+		using namespace std::chrono_literals;
+		while (cnt.load() < total) {
+			std::this_thread::sleep_for(1us);
+		}
+
+		auto diff = std::chrono::high_resolution_clock::now() - start;
+		auto us = std::chrono::duration<double,std::micro>(diff).count();
+		std::cout << total << " requests processed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " req/s)\n";
+
+		service.shutdown();
+	} catch (const std::exception& ex) {
 		std::cerr << "Failed to parse input: " << ex.what() << '\n';
 		return EXIT_FAILURE;
-    } 
-    return EXIT_SUCCESS;
+	}
+	return EXIT_SUCCESS;
 }
