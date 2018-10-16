@@ -34,7 +34,7 @@ public:
 	std::map<uint32_t, String> getTriggerIdNames() const { return workers[0]->engine.getTriggerIdNames(); }
 
 private:
-	static const int MAX_REQS{4096};
+	static const int MAX_REQS{32768};
 
 	struct Request {
 		std::uint64_t reqId;
