@@ -21,18 +21,18 @@ objs = $(srcs:.cpp=.o)
 .cpp.o:
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-all: trigger bench
+all: bench_trigger bench_service
 
 libtrigger.a: $(objs)
 	rm -f $@
 	$(AR) cr $@ $(objs)
 	$(RANLIB) $@
 
-trigger: libtrigger.a main.o
-	$(CC) $(LDFLAGS) -o $@ main.o $<
+bench_trigger: libtrigger.a bench_trigger.o
+	$(CC) $(LDFLAGS) -o $@ bench_trigger.o $<
 
-bench: libtrigger.a bench.o
-	$(CC) $(LDFLAGS) -o $@ bench.o $<
+bench_service: libtrigger.a bench_service.o
+	$(CC) $(LDFLAGS) -o $@ bench_service.o $<
 
 clean:
-	@rm -f trigger libtrigger.a *.o
+	@rm -f bench_trigger bench_service libtrigger.a *.o

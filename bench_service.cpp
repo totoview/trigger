@@ -1,13 +1,17 @@
+#include <cstdlib>
 #include <chrono>
-#include <iomanip>
 #include <iostream>
-#include <stdexcept>
-#include "engine.h"
+#include <iomanip>
+#include <tuple>
+#include "common.h"
+#include "service.h"
 #include "util.h"
+#include "var.h"
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
 	if (argc != 3) {
-		std::cerr << "Usage: trigger <spec> <input>\n";
+		std::cerr << "Usage: bench <spec> <input>\n";
 		return EXIT_FAILURE;
 	}
 
@@ -38,11 +42,13 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
-		// parse trigger spec
-		Engine engine{util::readFile(argv[1])};
+		std::atomic_uint32_t cnt{0};
+		Service service{util::readFile(argv[1]), [&cnt](Service::Result* res) {
+			cnt++;
+		}};
 
 		// convert name-based input to index-based input
-		auto varNameIndexes = engine.getVariableNameIndexes();
+		auto varNameIndexes = service.getVariableNameIndexes();
 		Vector<std::tuple<int, VarValue>> input2;
 
 		for (auto& [name, value] : input) {
@@ -51,40 +57,28 @@ int main(int argc, char* argv[]) {
 			input2.push_back(std::make_tuple(varNameIndexes[name], value));
 		}
 
-
-		Vector<uint32_t> fired;
-		engine.match(input2, fired, true);
-
-		std::cout << "=================== FIRED TRIGGERS ======================\n";
-		auto triggerNames = engine.getTriggerIdNames();
-		for (auto t : fired)
-			std::cout << triggerNames[t] << '\n';
-
 		std::cout << "====================== BENCHMARK ========================\n";
-		std::cout << "Warm up...";
-		for (auto i = 0; i < 1'000'000; i++) {
-			fired.clear();
-			engine.match(input2, fired, false);
+		service.start();
+
+		auto start = std::chrono::high_resolution_clock::now();
+		int total = 10'000'000;
+
+		for (auto i = 0; i < total; i++) {
+			while (service.tryMatch(&input2) == Service::ERR_REQ_ID);
 		}
-		std::cout << "done\n";
+		using namespace std::chrono_literals;
+		while (cnt.load() < total) {
+			std::this_thread::sleep_for(1us);
+		}
 
-		auto total = 10'000'000;
+		auto diff = std::chrono::high_resolution_clock::now() - start;
+		auto us = std::chrono::duration<double,std::micro>(diff).count();
+		std::cout << total << " requests processed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " req/s)\n";
 
-		// auto start = std::chrono::high_resolution_clock::now();
-		// for (auto i = 0; i < total; i++) {
-		// 	fired.clear();
-		// 	engine.match(input2, fired, false);
-		// }
-		// auto diff = std::chrono::high_resolution_clock::now() - start;
-		// auto us = std::chrono::duration<double,std::micro>(diff).count();
-		// std::cout << total << " requests processed in " << us << "us (avg=" << us/total << "us or " << total*1e6/us << " req/s)\n";
-
-		engine.bench_match(input, total);
-
-	} catch (std::exception& ex) {
+		service.shutdown();
+	} catch (const std::exception& ex) {
 		std::cerr << "Failed to parse input: " << ex.what() << '\n';
 		return EXIT_FAILURE;
 	}
-
 	return EXIT_SUCCESS;
 }
