@@ -42,7 +42,8 @@ void Service::Worker::shutdown()
 Service::Service(const std::string& spec, Callback cb)
 : triggerSpec(spec), callback(cb), nextId(1), requestQueue(MAX_REQS)
 {
-	for (auto i = 0; i < std::thread::hardware_concurrency(); i++)
+	int n = std::min<int>(std::thread::hardware_concurrency(), 8);
+	for (auto i = 0; i < n; i++)
 		workers.emplace_back(std::make_unique<Worker>(i, triggerSpec, requestQueue, requestPool, callback));
 }
 

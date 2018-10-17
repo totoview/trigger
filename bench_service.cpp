@@ -8,6 +8,8 @@
 #include "util.h"
 #include "var.h"
 
+using namespace std::chrono_literals;
+
 int main(int argc, char* argv[])
 {
 	if (argc != 3) {
@@ -61,14 +63,14 @@ int main(int argc, char* argv[])
 		service.start();
 
 		auto start = std::chrono::high_resolution_clock::now();
-		int total = 10'000'000;
+		int total = 20'000'000;
 
 		for (auto i = 0; i < total; i++) {
-			while (service.tryMatch(&input2) == Service::ERR_REQ_ID);
+			while (service.tryMatch(&input2) == Service::ERR_REQ_ID)
+				std::this_thread::sleep_for(1us);
 		}
-		using namespace std::chrono_literals;
 		while (cnt.load() < total) {
-			std::this_thread::sleep_for(1us);
+			std::this_thread::sleep_for(1ms);
 		}
 
 		auto diff = std::chrono::high_resolution_clock::now() - start;

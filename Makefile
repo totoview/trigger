@@ -6,11 +6,19 @@ else
 	EXTRA = -O3
 endif
 
-CC = clang++
-AR = llvm-ar
-RANLIB = llvm-ranlib
+ifeq ($(shell which clang++),)
+	CC = g++
+	AR = ar
+	RANLIB = ranlib
+else
+	CC = clang++
+	AR = llvm-ar
+	RANLIB = llvm-ranlib
+endif
+
 CFLAGS = -std=c++17 $(EXTRA)
-LDFLAGS = -lfolly -lhs
+LDFLAGS =
+LIBS = -lfolly -lhs -lglog -lpthread
 
 .PHONY: all
 .SUFFIXES: $(SUFFIXES) .cpp .o
@@ -29,10 +37,10 @@ libtrigger.a: $(objs)
 	$(RANLIB) $@
 
 bench_trigger: libtrigger.a bench_trigger.o
-	$(CC) $(LDFLAGS) -o $@ bench_trigger.o $<
+	$(CC) $(LDFLAGS) -o $@ bench_trigger.o $< $(LIBS)
 
 bench_service: libtrigger.a bench_service.o
-	$(CC) $(LDFLAGS) -o $@ bench_service.o $<
+	$(CC) $(LDFLAGS) -o $@ bench_service.o $< $(LIBS)
 
 clean:
 	@rm -f bench_trigger bench_service libtrigger.a *.o
