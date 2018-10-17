@@ -12,9 +12,11 @@ void Service::Worker::start()
 		bool ok;
 
 		for (;;) {
-			if (stop.load())
-				break;
-			for (int i = 0; i < 100; i++) {
+			{
+				std::lock_guard<std::mutex> lock(mux);
+				if (stop) break;
+			}
+			for (int i = 0; i < 100'000; i++) {
 				if (requestQueue.read(req)) {
 					res.reqId = req->reqId;
 					res.triggers.clear();
@@ -22,7 +24,8 @@ void Service::Worker::start()
 					ok = requestPool.put(req);
 					assert(ok);
 					callback(&res);
-				}
+				} else
+					break;
 			}
 		}
 		stopped.notify_all();
@@ -33,8 +36,8 @@ void Service::Worker::shutdown()
 {
 	if (thread.empty()) return;
 
-	stop.store(true);
 	std::unique_lock<std::mutex> lock(mux);
+	stop = true;
 	stopped.wait(lock);
 	thread[0].join();
 }

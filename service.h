@@ -58,7 +58,7 @@ private:
 		Callback& callback;
 		Vector<std::thread> thread;
 
-		std::atomic_bool stop;
+		bool stop;
 		std::mutex mux;
 		std::condition_variable stopped;
 	};
