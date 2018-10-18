@@ -21,7 +21,19 @@ void Service::Worker::start()
 					res.reqId = req->reqId;
 					res.triggers.clear();
 					engine.match(*req->input, res.triggers);
-					ok = requestPool.put(req);
+
+					if (!freeBlock) {
+						ok = requestPool.getFree(freeBlock);
+						assert(ok);
+					}
+
+					freeBlock->emplace_back(req);
+					if (freeBlock->size() == BLOCK_SIZE) {
+						ok = requestPool.putData(freeBlock);
+						assert(ok);
+						freeBlock = nullptr;
+					}
+
 					assert(ok);
 					callback(&res);
 				} else
@@ -43,9 +55,9 @@ void Service::Worker::shutdown()
 }
 
 Service::Service(const std::string& spec, Callback cb)
-: triggerSpec(spec), callback(cb), nextId(1), requestQueue(MAX_REQS)
+: triggerSpec(spec), callback(cb), nextId(1), requestQueue(MAX_REQS), dataBlock(nullptr)
 {
-	int n = std::min<int>(std::thread::hardware_concurrency(), 8);
+	int n = std::min<int>(std::thread::hardware_concurrency(), MAX_WORKERS);
 	for (auto i = 0; i < n; i++)
 		workers.emplace_back(std::make_unique<Worker>(i, triggerSpec, requestQueue, requestPool, callback));
 }
@@ -66,16 +78,28 @@ void Service::shutdown()
 std::uint64_t Service::tryMatch(Input* input)
 {
 	Request* req;
-	if (!requestPool.get(req))
-		return ERR_REQ_ID;
+
+	if (!dataBlock) {
+		if (!requestPool.getData(dataBlock))
+			return ERR_REQ_ID;
+	}
+
+	req = dataBlock->back();
+	dataBlock->pop_back();
 
 	auto id = nextId.fetch_add(1);
 	req->reqId = id;
 	req->input = input;
 
 	if (!requestQueue.write(req)) {
-		requestPool.put(req);
+		dataBlock->emplace_back(req);
 		return ERR_REQ_ID;
 	}
+
+	if (dataBlock->empty()) {
+		requestPool.putFree(dataBlock);
+		dataBlock = nullptr;
+	}
+
 	return id;
 }
