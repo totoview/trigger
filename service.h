@@ -50,7 +50,7 @@ private:
 	struct Worker
 	{
 		explicit Worker(int wid, const std::string& spec, RequestQueue& q, RequestPool& p, Callback& cb)
-		: id(wid), engine(spec), requestQueue(q), requestPool(p), callback(cb), stop(false), freeBlock(nullptr)
+		: id(wid), engine(spec), requestQueue(q), requestPool(p), callback(cb), stop(false)
 		{}
 
 		void start();
@@ -58,7 +58,6 @@ private:
 
 		int id;
 		Engine engine;
-		RequestBlock* freeBlock;
 		RequestQueue& requestQueue;
 		RequestPool& requestPool;
 

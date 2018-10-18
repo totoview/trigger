@@ -9,6 +9,8 @@ void Service::Worker::start()
 	thread.emplace_back([this]() {
 		Request* req;
 		Result res;
+		RequestBlock* freeBlock{nullptr};
+
 		bool ok;
 
 		for (;;) {
@@ -40,6 +42,10 @@ void Service::Worker::start()
 					break;
 			}
 		}
+
+		if (freeBlock)
+			requestPool.putData(freeBlock);
+
 		stopped.notify_all();
 	});
 }
