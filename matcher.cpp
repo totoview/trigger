@@ -49,7 +49,7 @@ void Matcher::init()
 #ifdef __DEBUG__
 		std::cout << "[compile pattern] " << i+1 << "/" << cnt << ": " << patterns[i] << '\n';
 #endif
-		flags[i] = HS_FLAG_DOTALL;
+		flags[i] = HS_FLAG_SINGLEMATCH;
 		ids[i] = i;
 	}
 
@@ -72,14 +72,14 @@ void Matcher::init()
 
 size_t Matcher::match(Vector<Predicate*>& c)
 {
-	const char* input = std::get<String>(var->value).c_str();
+	const auto& v = std::get<String>(var->value);
 	results = &c;
 	matchCnt = 0;
 
 #ifdef __DEBUG__
 	std::cout << "===== match: " << var->stringValue << '\n';
 #endif
-	if (hs_scan(db, input, strlen(input), 0, scratch, handler, this) != HS_SUCCESS) {
+	if (hs_scan(db, v.c_str(), v.length(), 0, scratch, handler, this) != HS_SUCCESS) {
 		// std::cout << "failed to scan input buffer\n";
 	}
 	return matchCnt;
